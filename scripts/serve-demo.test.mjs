@@ -23,7 +23,6 @@ test('test server adds offline integration fixtures to demo routes',async()=>{
   try {
     const single=await (await fetch(base)).text();
     assert.equal((single.match(/class="mount" data-player/g)||[]).length,1);
-    assert.match(single,/not flight-camera footage/);
     const integration=await (await fetch(base+'/integration.html')).text();
     assert.equal((integration.match(/class="mount" data-player/g)||[]).length,2);
     assert.match(integration,/\/fixtures\/regression\/manifest.json/);

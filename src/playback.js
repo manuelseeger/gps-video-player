@@ -115,6 +115,8 @@ export class Playback {
       if (!this.playing || this.phase === 'error') { media.pause(); return; }
       ready();
     });
+    // rAF is suspended in hidden tabs. Media events still drive trim and clip transitions.
+    media.addEventListener('timeupdate', () => { if (active()) this.tick(); });
     media.addEventListener('waiting', () => {
       if (!active() || !this.playing || this.phase === 'error') return;
       if (this.phase === 'playing') this.captureMedia();
@@ -188,7 +190,7 @@ export class Playback {
     this.publish();
   }
   setRate(value) {
-    if (!Number.isFinite(value) || value <= 0) return;
+    if (!Number.isFinite(value) || value < 0.0625 || value > 16) return;
     this.tick();
     this.rate = value;
     if (this.media) { this.media.defaultPlaybackRate = value; this.media.playbackRate = value; }

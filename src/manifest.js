@@ -20,7 +20,8 @@ export function validateManifest(input, baseUrl) {
   const base = resourceUrl(baseUrl);
   object(input.track, 'track');
   const track = {...input.track};
-  if ((typeof track.igc === 'string') === (typeof track.url === 'string')) throw new Error('Track requires exactly one of url or igc');
+  const sources = ['url', 'igc'].filter(key => track[key] !== undefined);
+  if (sources.length !== 1 || typeof track[sources[0]] !== 'string') throw new Error('Track requires exactly one of url or igc');
   if (track.url !== undefined) track.url = resourceUrl(track.url, base);
   track.start = utcInstant(track.startUtc, 'track.startUtc');
   if (!Array.isArray(input.clips)) throw new Error('clips must be an array');

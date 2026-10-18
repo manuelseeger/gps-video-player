@@ -2,6 +2,8 @@
 import {chromium} from '@playwright/test';
 import {once} from 'node:events';
 import {readFile} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import assert from 'node:assert/strict';
 import {createDemoServer} from '../tests/server.mjs';
 import {verifyCameraTracking} from './camera-tracking.mjs';
@@ -19,12 +21,13 @@ try {
   await page.route('**/*',route => route.request().url().startsWith(base+'/') || route.request().url().startsWith('blob:') ? route.continue() : route.abort());
   await page.route(base+'/demo/manifest.json',route => route.fulfill({json:manifest}));
   await page.goto(base);
-  await page.waitForFunction(() => window.demo?.players[0].state?.mapReady && window.demo.players[0].state.phase === 'paused' && window.demo.players[0].state.mainView === 'map');
+  await page.waitForFunction(() => window.demo?.players[0].state?.mapReady && window.demo.players[0].state.phase === 'paused' && window.demo.players[0].state.mainView === 'video');
+  await page.locator('#first #swap').click();
   await verifyCameraTracking(page,'map');
   await verifyCameraTracking(page,'hud');
   assert.deepEqual(errors,[]);
   assert.deepEqual(await page.evaluate(() => window.demo.resourceErrors),[]);
-  await page.screenshot({path:'/tmp/gps-video-player-camera-tracking.png'});
+  await page.screenshot({path:join(tmpdir(),'gps-video-player-camera-tracking.png')});
   await page.evaluate(() => window.demo.players[0].destroy());
 } finally {
   await browser?.close();

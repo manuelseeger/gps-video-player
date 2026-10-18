@@ -95,7 +95,7 @@ During clips, media time drives playback. Track time pauses while media loads or
 | `load(manifestOrUrl, overrides?)` | Load a v1 manifest URL or an inline object. Returns a Promise for the same readiness point as `ready`. Aborts the previous load and releases its media and renderer. Each load resets rate to 1× and volume to 1, and applies the initial mute option. Pending and failed loads clear previous flight readouts and the profile. A failed load leaves an empty player. `ready` continues to refer to the initial load. |
 | `play()`, `pause()` | Set playback intent. Browser autoplay rules still apply. Media errors are events. |
 | `seek(seconds)` | Seek on the elapsed axis. Zero is the first clip start, or the first track fix for a track-only manifest. Values are clamped to the union of track and video extents. |
-| `setRate(number)` | Set a positive playback rate and update the select. Preset rates are 0.5, 1, 2 and 4; other API rates appear as a temporary option. |
+| `setRate(number)` | Set the playback rate from 0.0625 to 16 and update the select. Other values are ignored. Preset rates are 0.5, 1, 2 and 4; other API rates appear as a temporary option. |
 | `setNudge(seconds)` | Shift track time only. Positive values show a later track position for the same video time. Reset on load; not stored. |
 | `state` | Snapshot, or `null` when empty/destroyed. Includes elapsed, origin, track UTC (Unix seconds), bounds, nudge, phase, play intent, rate, clip index, clip-local time, actual media time, sampled telemetry, mode, main view and `mapReady`. |
 | `on(type, listener)` | Subscribe to a `CustomEvent`; payload is `event.detail`. Returns an unsubscribe function. |

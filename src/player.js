@@ -295,7 +295,7 @@ async function load(input, overrides = {}) {
     $('map-status').textContent = 'Loading map…';
     acquireRenderer(); ownsWorker = true;
     map = new maplibregl.Map({
-      container:$('map'), attributionControl:false, center:[current.lon,current.lat],
+      container:$('map'), attributionControl:{compact:true}, center:[current.lon,current.lat],
       zoom:14.3, pitch:64, bearing:current.heading, maxPitch:85,
       canvasContextAttributes:{antialias:true}, style,
       // Tile/media credentials belong in signed resource URLs, never inherited headers.
