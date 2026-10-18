@@ -33,6 +33,25 @@ test('camera follows multiple clockwise and counterclockwise rotations without r
   }
 });
 
+test('camera smoothing tracks turns across slow and uneven frames', () => {
+  const rate = 22.5;
+  for (const direction of [1, -1]) {
+    for (const intervals of [[0.4], [0.8], [1 / 60, 0.6, 1 / 30, 0.9]]) {
+      let elapsed = 0, heading = 325;
+      for (let frame = 0; elapsed < 64; frame++) {
+        const dt = intervals[frame % intervals.length];
+        elapsed += dt;
+        const desired = 325 + direction * rate * elapsed;
+        const next = smoothHeading(heading, normalizeHeading(desired), dt);
+        const step = (next - heading) * direction;
+        assert.ok(step >= 0 && step / dt < 65, 'Camera does not reverse or spin');
+        assert.ok(Math.abs(desired - next) < 20, 'Elapsed-time smoothing stays near course on slow frames');
+        heading = next;
+      }
+    }
+  }
+});
+
 test('sampling interpolates shortest arcs even with unwrapped input headings', () => {
   for (const [a,b,expected] of [[359,1,0],[1,359,0],[1040,325,322.5],[-1040,35,37.5]]) {
     const fixes = [{t:0,heading:a},{t:1,heading:b}].map(p=>({...p,lat:0,lon:0,alt:100,vario:0,speed:10}));

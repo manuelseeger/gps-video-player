@@ -137,7 +137,8 @@ const HUD = {back: 45, up: 12, ahead: 350, below: 110};
 function updateCamera(p, force = false) {
   if (!p || (!following && !force)) return;
   const now = performance.now();
-  const dt = Math.min(0.2, (now - lastCamera) / 1000); lastCamera = now;
+  // Use elapsed time even when rendering is slow; capping it makes smoothing fall behind.
+  const dt = (now - lastCamera) / 1000; lastCamera = now;
   if (heading === null || force) heading = p.heading;
   // Exponential smoothing of GPS course (ground track is noisy while thermalling).
   // Keep accumulated turns; shortest-arc math must handle an unbounded heading.
