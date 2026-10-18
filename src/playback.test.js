@@ -199,3 +199,26 @@ test('invalid control inputs cannot corrupt the clock', () => {
   p.seek(NaN);p.seek(Infinity);p.setRate(0);p.setRate(NaN);p.setNudge(Infinity);
   assert.equal(p.elapsed,20);assert.equal(p.rate,1);assert.equal(p.nudge,0);
 });
+
+test('unsupported rates leave state and media unchanged, before and after media exists', () => {
+  const {p,media}=setup();
+  const invalid=[0,-1,NaN,Infinity,0.05,20,'2',null];
+  for(const v of invalid){p.setRate(v);assert.equal(p.rate,1);}
+  p.setRate(16);p.setRate(0.0625);assert.equal(p.rate,0.0625);p.setRate(1);
+  p.seek(3);
+  for(const v of invalid){p.setRate(v);assert.equal(p.rate,1);assert.equal(media[0].playbackRate,1);}
+  p.setRate(16);assert.equal(media[0].playbackRate,16);
+  const defaults=media[0].defaultPlaybackRate;
+  p.setRate(20);assert.equal(p.rate,16);assert.equal(media[0].playbackRate,16);assert.equal(media[0].defaultPlaybackRate,defaults);
+  p.seek(4);assert.equal(media.length,2);assert.equal(media[1].playbackRate,16);
+});
+
+test('Chromium-style range errors cannot poison later seeks', () => {
+  const {p,media}=setup();
+  p.seek(3);
+  let rate=1;
+  Object.defineProperty(media[0],'playbackRate',{get:()=>rate,set:v=>{if(v>16)throw new DOMException('range','NotSupportedError');rate=v;}});
+  p.setRate(20);
+  assert.equal(p.rate,1);
+  p.seek(5);assert.equal(media.length,2);assert.equal(media[1].playbackRate,1);
+});

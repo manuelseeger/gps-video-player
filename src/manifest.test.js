@@ -18,7 +18,7 @@ test('strict UTC timestamps reject ambiguous, impossible or normalized dates',()
   assert.equal(utcInstant('2032-02-29T00:00:00.1Z'),Date.parse('2032-02-29T00:00:00.100Z')/1000);
 });
 test('invalid contract and unsafe URL schemes fail before resource loads',()=>{
-  const changes=[m=>m.version=2,m=>delete m.track.startUtc,m=>m.track.igc='duplicate',m=>m.clips[0].durationSeconds=0,m=>m.clips[0].durationSeconds=Infinity,m=>m.clips[0].mediaOffsetSeconds=-1,m=>m.clips.reverse(),m=>m.clips[1].startUtc=m.clips[0].startUtc,m=>m.metadata.title={},m=>m.map.terrain={source:'x',exaggeration:-1},m=>m.track.url='file:///etc/passwd',m=>m.clips[0].url='javascript:alert(1)',m=>m.clips[0].url='https://user:pass@app.test/a',m=>m.metadata.timeZone='bad'];
+  const changes=[m=>m.version=2,m=>delete m.track.startUtc,m=>m.track.igc='duplicate',m=>{delete m.track.url;m.track.igc=123;},m=>{m.track.url='./t.igc';m.track.igc=123;},m=>{delete m.track.igc;m.track.url=123;},m=>{m.track.igc='data';m.track.url=123;},m=>{delete m.track.url;m.track.igc=null;},m=>m.clips[0].durationSeconds=0,m=>m.clips[0].durationSeconds=Infinity,m=>m.clips[0].mediaOffsetSeconds=-1,m=>m.clips.reverse(),m=>m.clips[1].startUtc=m.clips[0].startUtc,m=>m.metadata.title={},m=>m.map.terrain={source:'x',exaggeration:-1},m=>m.track.url='file:///etc/passwd',m=>m.clips[0].url='javascript:alert(1)',m=>m.clips[0].url='https://user:pass@app.test/a',m=>m.metadata.timeZone='bad'];
   for(const change of changes){const m=copy();change(m);assert.throws(()=>validateManifest(m,base));}
   assert.throws(()=>validateManifest(fixture));
 });

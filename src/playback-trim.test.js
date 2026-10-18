@@ -25,3 +25,20 @@ test('destroy invalidates pending media and removes play intent',async()=>{
   p.destroy();media.paused=false;resolve();await Promise.resolve();
   assert.equal(media.paused,true);assert.equal(p.playing,false);assert.equal(p.media,null);assert.ok(cleared>=2);
 });
+test('media timeupdate enforces trim end without a manual tick and ignores retired media',async()=>{
+  const timeline=new Timeline({clips:[{src:'https://media.test/video.webm',startUtcSeconds:100,durationSeconds:4,mediaOffsetSeconds:6}]},100,112);
+  const media=[];
+  const p=new Playback(timeline,{createMedia:()=>{const m=new Media();media.push(m);return m;},clearMedia:()=>{}});
+  p.seek(1);media[0].ready();p.play();await Promise.resolve();
+  media[0].currentTime=8.5;media[0].dispatchEvent(new Event('timeupdate'));
+  assert.equal(p.elapsed,2.5);assert.equal(p.phase,'playing');
+  media[0].currentTime=10.1;media[0].dispatchEvent(new Event('timeupdate'));
+  assert.equal(p.elapsed,4);assert.equal(p.phase,'gap');assert.equal(p.media,null);assert.equal(media[0].paused,true);
+  const state=p.state;
+  media[0].currentTime=7;media[0].dispatchEvent(new Event('timeupdate'));
+  assert.deepEqual(p.state,state);
+  p.seek(1);media[1].ready();p.play();await Promise.resolve();
+  p.seek(2);media[0].currentTime=10.1;media[0].dispatchEvent(new Event('timeupdate'));
+  assert.equal(p.elapsed,2);assert.equal(p.media,media[2]);
+  p.destroy();
+});

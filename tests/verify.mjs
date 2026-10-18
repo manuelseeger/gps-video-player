@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {createDemoServer} from './server.mjs';
 import {once} from 'node:events';
 import {readFile} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 
 const server=createDemoServer();server.listen(0,'0.0.0.0');await once(server,'listening');
 const base=`http://127.0.0.1:${server.address().port}`;
@@ -196,7 +198,7 @@ try {
     await replacement.ready;window.demo.replacement=replacement;
   },base);
   await page.waitForFunction(()=>window.demo.replacement.state?.mapReady && window.demo.replacement.state.phase==='paused');
-  await page.screenshot({path:'/tmp/gps-video-player-player-smoke.png'});
+  await page.screenshot({path:join(tmpdir(),'gps-video-player-player-smoke.png')});
   await page.evaluate(()=>window.demo.replacement.destroy());
   await page.waitForFunction(()=>window.lifecycle.liveWorkers.size===0 && window.lifecycle.liveUrls.size===0);
   assert.deepEqual(await page.evaluate(()=>({workers:window.lifecycle.liveWorkers.size,urls:window.lifecycle.liveUrls.size})),{workers:0,urls:0},'Destroy releases workers and Blob URLs');
@@ -228,7 +230,7 @@ try {
   const mountain=JSON.parse(await readFile(new URL('../demo/public/demo/manifest.json',import.meta.url)));
   const offline=JSON.parse(await readFile(new URL('./fixtures/regression/manifest.json',import.meta.url)));
   mountain.map=offline.map;
-  mountain.map.style.sources.dem={type:'raster-dem',tiles:[base+'/fixtures/regression/terrain.png'],tileSize:256,maxzoom:0,encoding:'terrarium'};
+  mountain.map.style.sources.dem={type:'raster-dem',tiles:[base+'/fixtures/regression/terrain.png'],tileSize:256,maxzoom:0,encoding:'terrarium',attribution:'Offline test terrain'};
   mountain.map.terrain={source:'dem',exaggeration:1};
   await page.route(base+'/demo/manifest.json',route=>route.fulfill({json:mountain}));
   await page.goto(base);
@@ -242,6 +244,7 @@ try {
   assert.match(await page.locator('[data-seek="60"]').textContent(),/40-degree right departure/);
   assert.match(await page.locator('#module-info').textContent(),/\/dist\/player.js/);
   const demoPlayer=page.locator('#first');
+  assert.match(await demoPlayer.locator('.maplibregl-ctrl-attrib').textContent(),/Offline test terrain/);
   let longState=(await state())[0];
   assert.equal(longState.end,90);assert.equal(longState.elapsed,0);assert.equal(longState.mediaTime,0);
   assert.equal(await demoPlayer.locator('video').evaluate(v=>v.duration),90);
@@ -270,7 +273,7 @@ try {
   await page.setViewportSize({width:650,height:1100});
   assert.ok((await demoPlayer.boundingBox()).width<=650);
   await page.setViewportSize({width:1500,height:1100});
-  await page.screenshot({path:'/tmp/gps-video-player-single-player-smoke.png'});
+  await page.screenshot({path:join(tmpdir(),'gps-video-player-single-player-smoke.png')});
   // Host form can replace a manifest, recover from failure, and expose its URL.
   await page.locator('#manifest').fill('/demo/missing.json');
   await page.locator('#load button[type=submit]').click();
@@ -284,6 +287,23 @@ try {
   await page.waitForFunction(()=>window.demo.players[0].state?.mapReady && window.demo.players[0].state.phase==='paused');
   assert.equal((await state())[0].end,20);
   assert.ok((await page.locator('#manifest-link').getAttribute('href')).endsWith('/fixtures/regression/manifest.json'));
+  const supportedRate=await page.evaluate(()=>{
+    const player=window.demo.players[0];
+    for(const rate of [20,.01,Infinity,NaN]) player.setRate(rate);
+    player.seek(1);
+    return player.state.rate;
+  });
+  assert.equal(supportedRate,1,'Unsupported rates leave playback usable');
+  await page.waitForFunction(()=>window.demo.players[0].state.phase==='paused');
+  assert.equal(await demoPlayer.locator('video').evaluate(video=>video.playbackRate),1);
+  await page.evaluate(()=>{
+    window.requestAnimationFrame=()=>0;
+    window.demo.players[0].seek(3.7);
+    window.demo.players[0].play();
+  });
+  await page.waitForFunction(()=>window.demo.players[0].state.phase==='gap',null,{polling:50});
+  assert.equal((await state())[0].elapsed,4,'Media events enforce trims without animation frames');
+  assert.equal(await demoPlayer.locator('video').count(),0,'Trimmed media stops without animation frames');
   await page.evaluate(()=>window.demo.players[0].destroy());
   await page.waitForFunction(()=>window.lifecycle.liveWorkers.size===0 && window.lifecycle.liveUrls.size===0);
   assert.deepEqual(requests.filter(url=>!localRuntime(url)),[],'Entire smoke stays independent of the public network');
