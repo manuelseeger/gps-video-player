@@ -39,7 +39,7 @@ export function createPlayer(container, options = {}) {
 const $ = id => root.getElementById(id);
 const panel = $('map-panel'), inset = $('inset-panel');
 let timeline, playback, flightClock;
-let fixes, segments, map, overlay, ready = false, mode = 'map', mainView = 'video', following = true, headingFollow = true, drop = true;
+let fixes, segments, map, overlay, ready = false, mode = 'map', mainView = 'video', following = true, headingFollow = true, drop = false;
 let nudge = 0, current, lastFrame = 0, lastIndex = -1, flown = [], heading = null, lastCamera = 0;
 const initialTime = Number.isFinite(options.initialTime) ? options.initialTime : 0;
 let noticeTimer;
@@ -295,7 +295,7 @@ async function load(input, overrides = {}) {
     $('map-status').textContent = 'Loading map…';
     acquireRenderer(); ownsWorker = true;
     map = new maplibregl.Map({
-      container:$('map'), attributionControl:true, center:[current.lon,current.lat],
+      container:$('map'), attributionControl:false, center:[current.lon,current.lat],
       zoom:14.3, pitch:64, bearing:current.heading, maxPitch:85,
       canvasContextAttributes:{antialias:true}, style,
       // Tile/media credentials belong in signed resource URLs, never inherited headers.
@@ -313,7 +313,7 @@ async function load(input, overrides = {}) {
       overlay = new MapboxOverlay({interleaved:true, views:new FlightMapView(map), layers:layers(current), onError:error => {notice(error.message); emit('maperror',{message:error.message});}});
       map.addControl(overlay); ready = true;
       applyMode(); updateCamera(current,true);
-      $('map-status').textContent = manifest.map.terrain ? 'Terrain · MSL track' : 'MSL track';
+      $('map-status').textContent = '';
       emit('mapready', {});
     });
     for (const event of ['dragstart','zoomstart','rotatestart','pitchstart']) map.on(event,e=>{if(e.originalEvent)setFollowing(false);});
@@ -333,7 +333,6 @@ $('mode').onclick=()=>{mode=mode==='map'?'hud':'map';applyMode();};
 $('swap').onclick=()=>{mainView=mainView==='video'?'map':'video';applyMode();};
 $('follow').onclick=()=>{setFollowing(!following);if(following)updateCamera(current,true);};
 $('heading').onclick=()=>{headingFollow=!headingFollow;$('heading').textContent=`Heading ${headingFollow?'on':'off'}`;$('heading').classList.toggle('active',headingFollow);};
-$('drop').onclick=()=>{drop=!drop;$('drop').textContent=`Drop line ${drop?'on':'off'}`;$('drop').classList.toggle('active',drop);};
 $('opacity').oninput=()=>{$('map').style.opacity=mode==='hud'||mainView==='map'?1:$('opacity').value;};
 $('play').onclick=()=>{if(playback)playback.playing?playback.pause():playback.play();};
 $('seek').oninput=e=>queueSeek(+e.target.value);
@@ -386,13 +385,14 @@ const resizeObserver = new ResizeObserver(() => { clampInset(); map?.resize(); }
 resizeObserver.observe(shell); resizeObserver.observe(inset); observers.push(resizeObserver);
 const shortcuts = [
   ['Space','play','click'], ['m','mode','click'], ['s','swap','click'],
-  ['f','follow','click'], ['h','heading','click'], ['d','drop','click'],
+  ['f','follow','click'], ['h','heading','click'],
   ['u','mute','click'], ['x','fullscreen','click'], ['Escape','fullscreen','click'], ['t','takeoff','click'], ['l','landing','click'],
   [',','minus','click',true], ['.','plus','click',true], ['r','reset','click'],
   ['o','opacity','focus'], ['k','seek','focus'], ['v','volume','focus'],
   ['b','rate','focus'], ['p','profile','focus'], ['i','inset-handle','focus'],
 ].map(([key,id,activation,repeat=false])=>({key,element:$(id),activation,repeat}));
-for(const element of new Set(shortcuts.map(shortcut=>shortcut.element))) {
+shortcuts.push({key:'d',element:shell,activation:'toggle-drop'});
+for(const element of new Set(shortcuts.filter(shortcut=>shortcut.element!==shell).map(shortcut=>shortcut.element))) {
   const bindings=shortcuts.filter(shortcut=>shortcut.element===element);
   const label=element.title||element.getAttribute('aria-label')||element.labels?.[0]?.textContent.trim()||element.textContent.trim();
   element.title=`${label} (${bindings.map(({key,repeat})=>`${key.length===1?key.toUpperCase():key}${repeat?' / Shift for 1 s':''}`).join(' / ')})`;
@@ -403,7 +403,8 @@ shell.addEventListener('keydown',e=>{
   const shortcut=shortcutForEvent(e,shortcuts);
   if(!shortcut)return;
   e.preventDefault();
-  if(shortcut.activation==='focus')shortcut.element.focus();
+  if(shortcut.activation==='toggle-drop')drop=!drop;
+  else if(shortcut.activation==='focus')shortcut.element.focus();
   else if(shortcut.repeat&&e.shiftKey)shortcut.element.dispatchEvent(new MouseEvent('click',{bubbles:true,shiftKey:true}));
   else shortcut.element.click();
 }, {signal:uiController.signal});

@@ -36,7 +36,7 @@ try {
   window.demo = {players:[player], createPlayer, resourceErrors};
   const showReady = () => {
     const root = mount.firstElementChild.shadowRoot;
-    if (player.state.mainView !== 'map') root.getElementById('swap').click();
+    if (player.state.mainView !== 'video') root.getElementById('swap').click();
     const inset = root.getElementById('inset-panel');
     Object.assign(inset.style, {width:'30%', height:'38%', left:'auto', right:'16px', top:'70px'});
     status.textContent = `Player ready · ${source ? 'Source modules' : 'Built ES module'} · ${input.value}. Map tiles load separately.`;

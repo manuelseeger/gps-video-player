@@ -180,12 +180,48 @@ The renderer pair is MapLibre 6.14.0 and deck.gl 9.4.0. A local bridge exposes M
 
 Click or Tab into one player to use its shortcuts. Page controls and other instances are unaffected.
 
-- Space: play/pause. M: Map/HUD. S: swap main/inset. X: fullscreen for this player. Escape: exit its fullscreen.
-- F: follow. H: heading follow. D: altitude drop line. U: mute. T/L: track start/end.
-- Comma/period: nudge −/+0.1 s. Shift changes the step to 1 s. R: reset nudge.
-- K: timeline focus. P: profile focus. O: opacity focus. V: volume focus. B: rate focus. I: inset handle focus.
-- Profile: click/drag to seek; arrows seek 5 s; Home/End seek track endpoints.
-- Inset handle: drag to move; arrows move 10 px; Shift+arrows resize. The inset corner also resizes. Geometry is constrained to the player, not the page viewport.
+### Keyboard shortcuts
+
+| Key | Action |
+| --- | --- |
+| Space | Play or pause |
+| M | Switch Map/HUD mode |
+| S | Swap main and inset views (Map mode only) |
+| X | Toggle fullscreen for this player |
+| Escape | Exit fullscreen for this player |
+| F | Toggle position following |
+| H | Toggle heading following |
+| D | Toggle the altitude drop line (off by default) |
+| U | Toggle mute |
+| T | Seek to track start |
+| L | Seek to track end |
+| , / . | Decrease/increase sync offset by 0.1 s |
+| Shift+, / Shift+. | Decrease/increase sync offset by 1 s |
+| R | Reset sync offset |
+| K | Focus the timeline slider |
+| P | Focus the altitude profile |
+| O | Focus the opacity slider |
+| V | Focus the volume slider |
+| B | Focus the playback speed selector |
+| I | Focus the inset handle |
+
+With the **altitude profile focused**:
+
+| Key | Action |
+| --- | --- |
+| Left / Right | Seek backward/forward 5 s |
+| Home / End | Seek to track start/end |
+
+With the **inset handle focused** (Map mode only):
+
+| Key | Action |
+| --- | --- |
+| Arrow keys | Move the inset 10 px |
+| Shift+arrow keys | Resize the inset by 10 px |
+
+Tab and Shift+Tab move focus between controls. Focused sliders and selectors use their native keyboard controls. Space or Enter activates a focused button.
+
+Click or drag the altitude profile to seek. Drag the inset handle to move the inset, or drag its corner to resize it. Inset geometry is constrained to the player.
 
 Shortcuts ignore text fields, native sliders/selects, links, editable content, map controls, composition and command modifiers. Space/Enter on buttons retain their native action. Only sync nudge shortcuts repeat. Focused MapLibre controls retain their native keyboard behavior.
 
@@ -208,7 +244,7 @@ Vite binds to `0.0.0.0:5173`. Open `http://<server-LAN-IP>:5173/`. The default d
 
 ### Single-player mountain demo
 
-`/` shows one large player with the map as its main view. The module selector chooses the built bundle or Vite source modules. The manifest field accepts another URL; View JSON opens the selected manifest. The Node server serves built modules only; source-module mode needs Vite.
+`/` shows one large player with video as its main view and terrain/live track in picture-in-picture. The module selector chooses the built bundle or Vite source modules. The manifest field accepts another URL; View JSON opens the selected manifest. The Node server serves built modules only; source-module mode needs Vite.
 
 `demo/public/demo/manifest.json` selects Esri World Imagery and AWS-hosted Mapzen Terrarium DEM tiles, with real 3D terrain at exaggeration 1. These providers are configured only in this manifest, not in the library. Public tile access, CORS and provider terms apply. Attribution is included in both map sources. Imagery credits: Esri, Vantor, Earthstar Geographics and the GIS User Community. European elevation: produced using Copernicus data and information funded by the European Union — EU-DEM layers. See [imagery terms](https://goto.arcgisonline.com/maps/World_Imagery), [AWS terrain tiles](https://registry.opendata.aws/terrain-tiles/) and [terrain source credits](https://github.com/tilezen/joerd/blob/master/docs/attribution.md).
 

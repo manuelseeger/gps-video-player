@@ -4,7 +4,6 @@
 <body>
 <header>
   <div class="heading"><div><span class="eyebrow">GPS VIDEO PLAYER · STANDALONE PLAYER</span><h1>Synthetic flight above Lake Annecy</h1></div></div>
-  <p class="summary"><strong>Synthetic paragliding, real mountain terrain.</strong> A 90-second airborne excerpt near Planfait, France: straight glides, a +45° entry turn (0:20–0:28), a +40° right departure turn (1:00–1:08 at 5°/s, leaving 40° right of thermal entry), sink, lift and exactly two 16-second air-relative thermal rotations in one 32-second lift section (0:28–1:00), at 22.5°/s without roll ramps. The synchronized 90-second video is a generated test pattern, <strong>not flight-camera footage</strong>. Use the timeline or altitude profile to explore the full flight; Swap changes the main view.</p>
   <form id="load">
     <label for="module">Player module</label><select id="module"><option value="built">Built ES module</option><option value="source">Source modules (Vite)</option></select>
     <label for="manifest">Manifest URL</label><input id="manifest" value="/demo/manifest.json" type="text" spellcheck="false"><button type="submit">Load flight</button><a id="manifest-link" href="/demo/manifest.json">View JSON</a>
@@ -13,6 +12,6 @@
   <p id="status" role="status">Loading player…</p>
 </header>
 <main id="players"><div id="first" class="mount" data-player></div></main>
-<footer><p>The demo manifest selects <a href="https://goto.arcgisonline.com/maps/World_Imagery">Esri World Imagery</a> and <a href="https://registry.opendata.aws/terrain-tiles/">AWS / Mapzen Terrarium elevation tiles</a> with terrain exaggeration 1. Tiles need a public network connection and follow provider terms. European terrain: produced using Copernicus data and information funded by the European Union — EU-DEM layers. This synthetic route is not navigation data.</p><p id="module-info"></p></footer>
+<footer><p>The demo manifest selects <a href="https://goto.arcgisonline.com/maps/World_Imagery">Esri World Imagery</a> and <a href="https://registry.opendata.aws/terrain-tiles/">AWS / Mapzen Terrarium elevation tiles</a> with terrain exaggeration 1. Tiles need a public network connection and follow provider terms. European terrain: produced using Copernicus data and information funded by the European Union — EU-DEM layers.</p><p id="module-info"></p></footer>
 <script type="module" src="/demo.js"></script>
 </body></html>

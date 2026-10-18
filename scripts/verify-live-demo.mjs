@@ -21,7 +21,7 @@ try {
   await page.waitForFunction(()=>window.demo?.players[0].state?.mapReady && window.demo.players[0].state.phase==='paused' && window.demo.players[0].state.mainView==='map');
   await page.waitForLoadState('networkidle');
   const player=page.locator('#first');
-  assert.match(await player.locator('#map-status').textContent(),/Terrain/);
+  assert.equal(await player.locator('#map-status').textContent(),'');
   assert.match(await player.locator('.maplibregl-ctrl-attrib').textContent(),/Esri/);
   assert.match(await player.locator('.maplibregl-ctrl-attrib').textContent(),/Copernicus/);
   assert.equal(await player.locator('video').evaluate(v=>v.duration),90);

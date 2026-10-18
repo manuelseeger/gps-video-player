@@ -1,4 +1,4 @@
-/** @typedef {{key: string, element: HTMLElement, activation: 'click'|'focus', repeat?: boolean}} Shortcut */
+/** @typedef {{key: string, element: HTMLElement, activation: 'click'|'focus'|'toggle-drop', repeat?: boolean}} Shortcut */
 
 /** @param {KeyboardEvent} event @param {Shortcut[]} shortcuts */
 export function shortcutForEvent(event, shortcuts) {

@@ -137,7 +137,7 @@ try {
   assert.equal(await first.locator('h1 img').count(),0);
   assert.match(await first.locator('h1').textContent(),/^<img/);
   await page.waitForFunction(()=>window.demo.players[0].state?.phase==='paused');
-  assert.match(await first.locator('#map-status').textContent(),/Terrain/);
+  assert.equal(await first.locator('#map-status').textContent(),'');
   assert.deepEqual(await page.evaluate(()=>window.demo.resourceErrors),[]);
   // Empty/hidden mounts keep useful defaults. Pending and failed replacement loads clear stale flight UI.
   await page.evaluate(async()=>{
@@ -232,12 +232,12 @@ try {
   mountain.map.terrain={source:'dem',exaggeration:1};
   await page.route(base+'/demo/manifest.json',route=>route.fulfill({json:mountain}));
   await page.goto(base);
-  await page.waitForFunction(()=>window.demo?.players.length===1 && window.demo.players[0].state?.mapReady && window.demo.players[0].state.phase==='paused' && window.demo.players[0].state.mainView==='map');
+  await page.waitForFunction(()=>window.demo?.players.length===1 && window.demo.players[0].state?.mapReady && window.demo.players[0].state.phase==='paused' && window.demo.players[0].state.mainView==='video');
   assert.equal(await page.locator('[data-player]').count(),1);
   assert.equal(await page.locator('#second').count(),0);
   assert.equal(await page.locator('#module').inputValue(),'built');
   assert.equal(await page.locator('#manifest').inputValue(),'/demo/manifest.json');
-  assert.match(await page.locator('.summary').textContent(),/not flight-camera footage/);
+  assert.equal(await page.locator('.summary').count(),0);
   assert.match(await page.locator('[data-seek="20"]').textContent(),/45-degree entry/);
   assert.match(await page.locator('[data-seek="60"]').textContent(),/40-degree right departure/);
   assert.match(await page.locator('#module-info').textContent(),/\/dist\/player.js/);
@@ -246,7 +246,8 @@ try {
   assert.equal(longState.end,90);assert.equal(longState.elapsed,0);assert.equal(longState.mediaTime,0);
   assert.equal(await demoPlayer.locator('video').evaluate(v=>v.duration),90);
   assert.ok((await demoPlayer.boundingBox()).width>1300,'Main demo is one large player');
-  assert.ok((await demoPlayer.locator('#map').boundingBox()).width>1300,'Terrain is the main view');
+  assert.ok((await demoPlayer.locator('video').boundingBox()).width>1300,'Video is the main view');
+  assert.equal(await demoPlayer.locator('#inset-panel #map').count(),1,'Terrain/live track is in picture-in-picture');
   await page.evaluate(()=>window.demo.players[0].seek(45));
   await page.waitForFunction(()=>window.demo.players[0].state.phase==='paused' && Math.abs(window.demo.players[0].state.mediaTime-45)<.1);
   for (const elapsed of [0,20,28,44,60]) {
