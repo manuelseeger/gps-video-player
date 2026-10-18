@@ -30,25 +30,6 @@ Serve `dist/player.js` from your site or CDN with a JavaScript content type. Thi
 
 The npm package export is `gps-video-player`. Its `import` export points to the same built module. Run `npm pack --dry-run` to list the package files.
 
-## Releases
-
-Push a tag without a `v` prefix to start `.github/workflows/release.yml`:
-
-```sh
-git tag 3.2.1
-git push origin 3.2.1
-```
-
-Stable tags (`major.minor.patch`) create a GitHub release and request approval to publish to npm. Preview tags (for example, `3.2.1-preview.1`) create a GitHub pre-release only. Each release includes `player.js`, `THIRD_PARTY_NOTICES.txt`, and an npm package archive. The tag sets the package version during the build; no version commit is needed. Tests and browser checks must pass before release creation. After approval, npm receives the same archive attached to the release.
-
-### Publishing setup
-
-1. In the GitHub repository settings, create an environment named `npm`. Add **required reviewers**. For a single-maintainer repository, leave **Prevent self-review** disabled so the maintainer can approve their own tag runs. With multiple maintainers, enable it to require another reviewer. Disable administrator bypass where available. Confirm that the repository plan supports required reviewers. The environment name in the workflow alone does not enforce approval.
-2. In the npm settings for `gps-video-player`, add a **trusted publisher** with the GitHub repository owner and name, workflow filename `release.yml`, and environment name `npm`. If the package does not exist, publish its first version manually, then configure the trusted publisher before pushing a release tag for a new version.
-3. Allow GitHub Actions to run in the repository. The workflow uses its GitHub token to create releases and OIDC to publish to npm with provenance. No npm token secret is needed.
-
-After a stable release is created, open its Actions run and approve the `npm` environment deployment to publish. If approval is rejected, the GitHub release remains available, but the package is not published to npm. Use a new version for each npm publication.
-
 An empty player displays "No flight loaded". A hidden mount keeps the default inset size until the mount becomes visible.
 
 Set the container height to at least 480 px. A width of at least 320 px is recommended. Each player appends one host element and uses its own Shadow DOM. It leaves the container's existing children intact. It does not read page URL parameters, use storage, or register page keyboard listeners. Multiple instances can share a page. Call `destroy()` before you remove a mount.
