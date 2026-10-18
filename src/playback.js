@@ -115,7 +115,7 @@ export class Playback {
       if (!this.playing || this.phase === 'error') { media.pause(); return; }
       ready();
     });
-    // rAF is suspended in hidden tabs. Media events still drive trim and clip transitions.
+    // rAF is suspended in hidden tabs. Media events still enforce trim ends.
     media.addEventListener('timeupdate', () => { if (active()) this.tick(); });
     media.addEventListener('waiting', () => {
       if (!active() || !this.playing || this.phase === 'error') return;
