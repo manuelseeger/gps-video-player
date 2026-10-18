@@ -1,14 +1,16 @@
 {
-  "codec": "vp9",
+  "codec": "vp8",
+  "colorRange": "tv",
+  "colorSpace": "bt709",
   "width": 1280,
   "height": 720,
   "pixelFormat": "yuv420p",
   "fps": "24/1",
   "decodedFrames": 2160,
   "durationSeconds": 90,
-  "bytes": 20677264,
+  "bytes": 20145736,
   "trackSha256": "1bfb3542667c133e1e38c3ca0c7218eccb00f30ef2efac3d5b65f8840ea12549",
-  "videoSha256": "840509c67f26db13789d670984c70f86816f554ff798252bda72d3432358f187",
+  "videoSha256": "8f98bc4003af31ae7e9a29957e2f6ae9654bbc9d6d4b7d671edeab433e6b07b6",
   "airRelativeThermalDegrees": 720,
   "airRelativeThermalRateDegreesPerSecond": 22.5
 }

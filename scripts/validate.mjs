@@ -24,15 +24,15 @@ flight.forEach((fix,i)=>{
 for(let i=28;i<60;i++)assert.equal(flight[i+1].airHeading-flight[i].airHeading,22.5);
 assert.equal(flight[28].airHeading-flight[20].airHeading,45);
 assert.equal(flight[68].airHeading-flight[60].airHeading,40);
-const video=new URL('output/planfait-fpv.webm',root);
+const video=new URL('output/planfait-fpv-vp8.webm',root);
 const probe=spawnSync('ffprobe',['-v','error','-count_frames','-show_streams','-show_format','-of','json',fileURLToPath(video)],{encoding:'utf8'});
 assert.equal(probe.status,0,probe.stderr);
 const info=JSON.parse(probe.stdout);assert.equal(info.streams.length,1);
 assert.ok(info.format.tags.COMMENT.includes('Produced using Copernicus data'));
 assert.ok(info.format.tags.COMMENT.includes('OpenStreetMap contributors'));
-const s=info.streams[0];assert.equal(s.codec_name,'vp9');assert.equal(s.width,1280);assert.equal(s.height,720);assert.equal(s.pix_fmt,'yuv420p');assert.equal(s.r_frame_rate,'24/1');assert.equal(s.nb_read_frames,'2160');assert.equal(Number(info.format.duration),90);
+const s=info.streams[0];assert.equal(s.codec_name,'vp8');assert.equal(s.color_range,'tv');assert.equal(s.color_space,'bt709');assert.equal(s.width,1280);assert.equal(s.height,720);assert.equal(s.pix_fmt,'yuv420p');assert.equal(s.r_frame_rate,'24/1');assert.equal(s.nb_read_frames,'2160');assert.equal(Number(info.format.duration),90);
 const samples=JSON.parse(await readFile(new URL('previews/camera-samples.json',root)));
 assert.ok(samples.every(s=>s.position[1]-s.ground>700),'Flight stays above terrain');
 assert.ok(samples.filter(s=>s.t>=32&&s.t<=56).every(s=>s.bank>18&&s.bank<23),'Thermal bank is approximately 20 degrees right');
-const report={codec:s.codec_name,width:s.width,height:s.height,pixelFormat:s.pix_fmt,fps:s.r_frame_rate,decodedFrames:Number(s.nb_read_frames),durationSeconds:Number(info.format.duration),bytes:Number(info.format.size),trackSha256:createHash('sha256').update(igc).digest('hex'),videoSha256:createHash('sha256').update(await readFile(video)).digest('hex'),airRelativeThermalDegrees:720,airRelativeThermalRateDegreesPerSecond:22.5};
+const report={codec:s.codec_name,colorRange:s.color_range,colorSpace:s.color_space,width:s.width,height:s.height,pixelFormat:s.pix_fmt,fps:s.r_frame_rate,decodedFrames:Number(s.nb_read_frames),durationSeconds:Number(info.format.duration),bytes:Number(info.format.size),trackSha256:createHash('sha256').update(igc).digest('hex'),videoSha256:createHash('sha256').update(await readFile(video)).digest('hex'),airRelativeThermalDegrees:720,airRelativeThermalRateDegreesPerSecond:22.5};
 await writeFile(new URL('output/validation.json',root),JSON.stringify(report,null,2)+'\n');console.log(report);

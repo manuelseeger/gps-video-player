@@ -4,15 +4,15 @@ A silent, 90-second low-poly paragliding animation. Muted green slopes, pale lim
 
 ## Deliverables
 
-- **Video:** [`output/planfait-fpv.webm`](output/planfait-fpv.webm)
+- **Video:** [`output/planfait-fpv-vp8.webm`](output/planfait-fpv-vp8.webm)
 - **Contact sheet:** [`previews/contact-sheet.jpg`](previews/contact-sheet.jpg)
 - **Opening frame:** [`previews/video-00.jpg`](previews/video-00.jpg)
 - **Banked lake view:** [`previews/video-56.jpg`](previews/video-56.jpg)
 - **Validation:** [`output/validation.json`](output/validation.json)
 
-The video contains 2,160 frames: **1280 × 720, 24 fps, 90.000 seconds, VP9, yuv420p**. Size: **20,677,264 bytes (19.72 MiB)**. It has no audio stream. Full source credits are stored in its WebM comment metadata. A small source-credit line is visible in the film.
+The video contains 2,160 frames: **1280 × 720, 24 fps, 90.000 seconds, VP8, yuv420p, limited-range BT.709**. Size: **20,145,736 bytes (19.21 MiB)**. It has no audio stream. Frames contain no visible text, labels, titles, credits or HUD. The full scene is uncropped, with no blur masks. Source credits are stored in its WebM comment metadata and the source documents.
 
-For app integration, copy **only `output/planfait-fpv.webm`** to the app’s video location. The rendering project is separate from the app.
+For app integration, copy **only `output/planfait-fpv-vp8.webm`** to the app’s video location. The rendering project is separate from the app.
 
 ## Flight alignment
 
@@ -56,7 +56,7 @@ All landscape surfaces use flat polygon colours. There are no satellite or photo
 
 ## Reproduce
 
-Requirements: Node.js 22 or later, Python 3 with Pillow, FFmpeg with `libvpx-vp9`, and Playwright Chromium. The supplied film used Node.js 26.12.0, Playwright 1.64.1, Pillow 12.3.0 and FFmpeg 9.0.2.
+Requirements: Node.js 22 or later, Python 3 with Pillow, FFmpeg with `libvpx`, and Playwright Chromium. The supplied film used Node.js 26.12.0, Playwright 1.64.1, Pillow 12.3.0 and FFmpeg 9.0.2.
 
 ```sh
 npm ci
@@ -72,9 +72,9 @@ npm run contact
 npm run validate
 ```
 
-The data and Three.js modules are included. Rendering requires no network access after dependency installation. Chromium uses SwiftShader, so a GPU and desktop display are not required. The temporary asset server binds to `0.0.0.0` and closes when the render ends. Rendering has a 20-minute time limit. A full render takes about 4 minutes 40 seconds on four CPU cores on the reference system.
+The data and Three.js modules are included. Rendering requires no network access after dependency installation. Chromium uses SwiftShader, so a GPU and desktop display are not required. The temporary asset server binds to `0.0.0.0` and closes when the render ends. Rendering has a 20-minute time limit. A full render takes about 4 minutes 30 seconds on the reference system.
 
-The renderer captures deterministic 1280 × 720 JPEG frames at quality 95 and streams them to FFmpeg. Encoding uses VP9 CRF 33, 4:2:0 pixels, 24 fps, no audio and exactly 2,160 frames. The output file is replaced. Font availability and browser/encoder versions can change exact output bytes.
+The renderer captures deterministic 1280 × 720 JPEG frames at quality 95 and streams them directly to `scripts/encode-vp8.sh`. The encoder converts full-range JPEG YCbCr (BT.601 matrix) to limited-range BT.709 YCbCr once, then encodes VP8 at 1800 kbit/s with CRF 10, two-second keyframes, 4:2:0 pixels, 24 fps, no audio and exactly 2,160 frames. There is no intermediate video encode. The output file is replaced. Browser and encoder versions can change exact output bytes.
 
 To rebuild the terrain grid and lake feature from the cached source files:
 
@@ -86,9 +86,9 @@ Missing DEM tiles are downloaded with four concurrent requests and 40-second req
 
 ## Validation
 
-`npm run validate` asserts the track checksum through exact generator/IGC equality, the entry/departure angles, every one-second thermal heading step, video dimensions, codec, pixel format, frame rate, decoded frame count, exact container duration and positive thermal bank. It saves the video checksum and probe results to `output/validation.json`.
+`npm run validate` asserts the track checksum through exact generator/IGC equality, the entry/departure angles, every one-second thermal heading step, video dimensions, VP8 codec, limited range, BT.709 matrix, pixel format, frame rate, decoded frame count, exact container duration and positive thermal bank. It saves the video checksum and probe results to `output/validation.json`.
 
-`previews/frame-*.jpg` are direct browser captures. `previews/video-*.jpg` and the contact sheet are decoded from the delivered WebM. `previews/camera-samples.json` records geographic camera positions, headings, bank and sampled ground height. A full `ffmpeg -v error -i output/planfait-fpv.webm -f null -` decode also passes.
+The contact-sheet captions are outside its decoded frame thumbnails; they are not part of the video. Visual review of all 12 thumbnails confirms that the sampled frames have no lettering. `previews/frame-*.jpg` are direct browser captures. `previews/video-*.jpg` and the contact sheet are decoded from the delivered WebM. `previews/camera-samples.json` records geographic camera positions, headings, bank and sampled ground height. A full `ffmpeg -v error -i output/planfait-fpv-vp8.webm -f null -` decode also passes.
 
 ## Source attribution and licences
 

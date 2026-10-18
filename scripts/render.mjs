@@ -20,9 +20,10 @@ try{
  page.on('pageerror',e=>console.error('PAGE ERROR',e));page.on('console',m=>{if(m.type()==='error')console.error('WEBGL',m.text());});
  await page.goto(`http://127.0.0.1:${server.address().port}/render/index.html`);
  await page.waitForFunction(()=>window.sceneReady,null,{timeout:120000});
+ if(await page.locator('body').innerText())throw Error('Visible text is not allowed in rendered frames');
  const times=PREVIEW?[0,12,24,28,32,36,40,44,48,52,56,60,66,75,89]:Array.from({length:FPS*SECONDS},(_,i)=>i/FPS);
  if(!PREVIEW){
-  encoder=spawn('ffmpeg',['-hide_banner','-loglevel','warning','-y','-f','image2pipe','-framerate',String(FPS),'-vcodec','mjpeg','-i','pipe:0','-an','-c:v','libvpx-vp9','-pix_fmt','yuv420p','-b:v','0','-crf','33','-deadline','good','-cpu-used','4','-row-mt','1','-tile-columns','2','-threads','3','-frames:v',String(FPS*SECONDS),'-metadata','title=Planfait / Lac d’Annecy — low-poly pilot study','-metadata','comment=Terrain: AWS / Mapzen. Produced using Copernicus data and information funded by the European Union - EU-DEM layers. SRTM/GMTED2010 courtesy of USGS. Lake outline: © OpenStreetMap contributors, ODbL 1.0, https://www.openstreetmap.org/copyright. Synthetic flight; not navigation data.',join(ROOT,'output/planfait-fpv.webm')],{stdio:['pipe','ignore','inherit']});
+  encoder=spawn('bash',[join(ROOT,'scripts/encode-vp8.sh')],{stdio:['pipe','ignore','inherit']});
   encoder.stdin.on('error',e=>console.error('Encoder input:',e.message));
  }
  const started=Date.now(),stats=[];

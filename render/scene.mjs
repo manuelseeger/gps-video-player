@@ -155,9 +155,6 @@ window.renderFrame=(time)=>{
  pilot.rotation.set(-.02*Math.sin(t*.23),glance*.6,Math.sin(t*.7)*.008);
  pilot.position.y=.008*Math.sin(t*1.4);pilot.position.x=.007*Math.sin(t*.9);
  sky.position.copy(camera.position);
- const titleAlpha=t<7?1:t<10?1-ease((t-7)/3):t>85?ease((t-85)/3)*.8:0;
- document.querySelector('#title').style.opacity=titleAlpha;
- document.querySelector('#mark').style.opacity=t<10?titleAlpha:.55;
  renderer.render(scene,camera);
  return {t,position:[x,f.alt,z],heading:f.airHeading,bank:bank/D,ground:elevation(x,z),triangles:renderer.info.render.triangles};
 };
