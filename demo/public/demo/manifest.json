@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "metadata": {
+    "title": "Synthetic flight · Lake Annecy",
+    "description": "90-second synthetic paragliding excerpt above Planfait, France: straight glides, a +45-degree entry turn (0:20–0:28), a +40-degree right departure turn (1:00–1:08, 5 degrees/second), leaving 40 degrees right of the thermal entry heading, sink, lift and exactly two 16-second air-relative thermal rotations in one 32-second section (0:28–1:00), at 22.5 degrees/second without roll ramps. The synchronized 90-second video is a generated test pattern, not flight-camera footage.",
+    "timeZone": "Europe/Paris",
+    "synthetic": true
+  },
+  "track": {
+    "url": "./track.igc",
+    "startUtc": "2030-07-01T12:00:00Z"
+  },
+  "clips": [
+    {
+      "url": "./demo.webm",
+      "startUtc": "2030-07-01T12:00:00Z",
+      "durationSeconds": 90,
+      "mediaOffsetSeconds": 0
+    }
+  ],
+  "map": {
+    "style": {
+      "version": 8,
+      "sources": {
+        "imagery": {
+          "type": "raster",
+          "tiles": [
+            "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+          ],
+          "tileSize": 256,
+          "maxzoom": 19,
+          "attribution": "Imagery: <a href=\"https://goto.arcgisonline.com/maps/World_Imagery\">Esri, Vantor, Earthstar Geographics, and the GIS User Community</a>"
+        },
+        "dem": {
+          "type": "raster-dem",
+          "tiles": [
+            "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"
+          ],
+          "tileSize": 256,
+          "maxzoom": 15,
+          "encoding": "terrarium",
+          "attribution": "Terrain: <a href=\"https://registry.opendata.aws/terrain-tiles/\">AWS / Mapzen</a> · Produced using Copernicus data and information funded by the European Union — EU-DEM layers; <a href=\"https://github.com/tilezen/joerd/blob/master/docs/attribution.md\">other terrain sources</a>"
+        }
+      },
+      "layers": [
+        {
+          "id": "imagery",
+          "type": "raster",
+          "source": "imagery",
+          "paint": {
+            "raster-fade-duration": 0
+          }
+        }
+      ]
+    },
+    "terrain": {
+      "source": "dem",
+      "exaggeration": 1
+    }
+  }
+}

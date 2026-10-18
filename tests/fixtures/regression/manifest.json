@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "metadata": {
+    "title": "Synthetic midnight flight",
+    "description": "Artificial flight and test video",
+    "timeZone": "UTC"
+  },
+  "track": {
+    "url": "./track.igc",
+    "startUtc": "2030-01-01T23:59:55Z"
+  },
+  "clips": [
+    {
+      "url": "./demo.webm",
+      "startUtc": "2030-01-01T23:59:55Z",
+      "durationSeconds": 4,
+      "mediaOffsetSeconds": 1
+    },
+    {
+      "url": "./demo.webm",
+      "startUtc": "2030-01-02T00:00:01Z",
+      "durationSeconds": 4,
+      "mediaOffsetSeconds": 3
+    }
+  ],
+  "map": {
+    "style": {
+      "version": 8,
+      "sources": {},
+      "layers": [
+        {
+          "id": "background",
+          "type": "background",
+          "paint": {
+            "background-color": "#15313c"
+          }
+        }
+      ]
+    }
+  }
+}
