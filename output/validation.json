@@ -8,9 +8,9 @@
   "fps": "24/1",
   "decodedFrames": 2160,
   "durationSeconds": 90,
-  "bytes": 20145736,
+  "bytes": 20143207,
   "trackSha256": "1bfb3542667c133e1e38c3ca0c7218eccb00f30ef2efac3d5b65f8840ea12549",
-  "videoSha256": "8f98bc4003af31ae7e9a29957e2f6ae9654bbc9d6d4b7d671edeab433e6b07b6",
+  "videoSha256": "89896e23cf4425d67204362b48173cb49abb44d006908e9fa82cc133d2479a8a",
   "airRelativeThermalDegrees": 720,
   "airRelativeThermalRateDegreesPerSecond": 22.5
 }

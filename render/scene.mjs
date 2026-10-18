@@ -125,6 +125,8 @@ const mat=color=>new THREE.MeshLambertMaterial({color,flatShading:true});
 const trouser=mat('#354555'),boot=mat('#29343b'),sole=mat('#c6c1a2'),harness=mat('#a35e48'),strap=mat('#343735'),metal=mat('#c4c5ad');
 function mesh(geo,material,pos,scale,parent=pilot){const m=new THREE.Mesh(geo,material);m.position.set(...pos);if(scale)m.scale.set(...scale);parent.add(m);return m;}
 function bar(a,b,r,material,parent=pilot){const av=new THREE.Vector3(...a),bv=new THREE.Vector3(...b),dir=bv.clone().sub(av);const g=new THREE.CylinderGeometry(r,r,dir.length(),5);const m=new THREE.Mesh(g,material);m.position.copy(av.add(bv).multiplyScalar(.5));m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.normalize());parent.add(m);return m;}
+const brakes=[];
+const brakeMaterial=mat('#b57646');
 for(const s of [-1,1]){
  bar([s*.17,-.73,-.40],[s*.235,-.78,-1.48],.10,trouser);
  const b=mesh(new THREE.BoxGeometry(.21,.18,.43),boot,[s*.24,-.80,-1.68]);b.rotation.set(-.13,s*-.11,s*-.10);
@@ -136,7 +138,10 @@ for(const s of [-1,1]){
  bar([s*.70,.00,-.90],[s*.73,.29,-.96],.011,strap);
  const c=mesh(new THREE.TorusGeometry(.025,.005,4,8),metal,[s*.70,.015,-.90]);c.rotation.y=.4;
  for(let j=0;j<4;j++)bar([s*(.73+j*.009),.29,-.96],[s*(.90+j*.20),2.7,-1.65-j*.22],.0013,j===0?mat('#b07651'):mat('#e2e1c9'));
- const loop=mesh(new THREE.TorusGeometry(.032,.0045,4,9),mat('#b57646'),[s*.66,-.10,-.91]);loop.scale.y=1.45;
+ // Brake handles and control lines sit outboard of the risers and suspension fan.
+ const loop=mesh(new THREE.TorusGeometry(.032,.0045,4,9),brakeMaterial,[s*.87,-.10,-.91]);loop.scale.y=1.45;
+ const line=mesh(new THREE.CylinderGeometry(.0018,.0018,1,5),brakeMaterial,[0,0,0]);
+ brakes.push({side:s,loop,line,anchor:new THREE.Vector3(s*1.8,2.7,-1.65)});
 }
 const headEuler=new THREE.Euler(0,0,0,'YXZ');
 function sample(t){const i=Math.min(89,Math.floor(t)),u=t-i,a=flight[i],b=flight[i+1];return Object.fromEntries(['lat','lon','alt','airHeading','airSpeed'].map(k=>[k,THREE.MathUtils.lerp(a[k],b[k],u)]));}
@@ -149,7 +154,17 @@ window.renderFrame=(time)=>{
  const t=Math.max(0,Math.min(90,time)),f=sample(t),[x,z]=coord(f.lon,f.lat);
  const glance=(1.5*Math.sin(t*.28)+1.0*Math.sin(t*.63)+.5*Math.sin(t*.11))*D;
  const pitch=(-12+1.2*Math.sin(t*.23)+.35*Math.sin(t*1.1))*D;
- const bank=roll(t)+.65*D*Math.sin(t*.75);
+ const turnBank=roll(t),bank=turnBank+.65*D*Math.sin(t*.75);
+ for(const {side,loop,line,anchor} of brakes){
+  // Positive bank is a right turn: pull only the right brake (and vice versa).
+  const pull=.28*THREE.MathUtils.clamp(side*turnBank/(35*D),0,1);
+  loop.position.y=-.10-pull;
+  const end=loop.position.clone();end.y+=.032*1.45;
+  const direction=anchor.clone().sub(end);
+  line.position.copy(end).add(anchor).multiplyScalar(.5);
+  line.scale.y=direction.length();
+  line.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),direction.normalize());
+ }
  camera.position.set(x,f.alt,z);
  headEuler.set(pitch,-f.airHeading*D-glance,-bank,'YXZ');camera.quaternion.setFromEuler(headEuler);
  pilot.rotation.set(-.02*Math.sin(t*.23),glance*.6,Math.sin(t*.7)*.008);
