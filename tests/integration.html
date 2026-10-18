@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>GPS Video Player · Two-player integration test</title><link rel="stylesheet" href="/demo.css"><style>#players{grid-template-columns:repeat(auto-fit,minmax(min(100%,650px),1fr))}.mount{height:660px}</style></head>
+<body data-demo="integration">
+<header>
+  <div class="heading"><div><span class="eyebrow">GPS VIDEO PLAYER · INTEGRATION TEST</span><h1>Two independent players</h1></div><a href="/">Single-player mountain demo →</a></div>
+  <p class="summary">Deterministic offline regression data: a tiny synthetic midnight track and a 9-second generated test-pattern video, trimmed into two 4-second clips with a gap. This is a test artifact, not a realistic flight or flight-camera footage. Each player has its own controls and keyboard focus. The default manifest does not use public map providers.</p>
+  <form id="load"><label for="module">Player module</label><select id="module"><option value="built">Built ES module</option><option value="source">Source modules (Vite)</option></select><label for="manifest">Manifest URL</label><input id="manifest" value="/fixtures/regression/manifest.json" type="text" spellcheck="false"><button type="submit">Load both players</button><button type="button" id="remove">Destroy second player</button><a id="manifest-link" href="/fixtures/regression/manifest.json">View JSON</a></form>
+  <p id="status" role="status">Loading players…</p>
+</header>
+<main id="players"><div id="first" class="mount" data-player></div><div id="second" class="mount" data-player></div></main>
+<footer><p id="module-info"></p></footer>
+<script type="module" src="/integration.js"></script>
+</body></html>
