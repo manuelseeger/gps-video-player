@@ -1,0 +1,35 @@
+{
+  "dem": {
+    "zoom": 11,
+    "url": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+    "tiles": [
+      "11/1057/728",
+      "11/1057/729",
+      "11/1057/730",
+      "11/1057/731",
+      "11/1058/728",
+      "11/1058/729",
+      "11/1058/730",
+      "11/1058/731",
+      "11/1059/728",
+      "11/1059/729",
+      "11/1059/730",
+      "11/1059/731",
+      "11/1060/728",
+      "11/1060/729",
+      "11/1060/730",
+      "11/1060/731",
+      "11/1061/728",
+      "11/1061/729",
+      "11/1061/730",
+      "11/1061/731"
+    ],
+    "attribution": "AWS / Mapzen Terrain Tiles. Produced using Copernicus data and information funded by the European Union \u2014 EU-DEM layers. See https://github.com/tilezen/joerd/blob/master/docs/attribution.md"
+  },
+  "lake": {
+    "url": "https://nominatim.openstreetmap.org/search?q=Lac%20Annecy&format=json&polygon_geojson=1",
+    "osmRelation": 2390533,
+    "license": "ODbL 1.0; \u00a9 OpenStreetMap contributors"
+  },
+  "trackSha256": "1bfb3542667c133e1e38c3ca0c7218eccb00f30ef2efac3d5b65f8840ea12549"
+}

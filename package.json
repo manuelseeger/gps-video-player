@@ -1,0 +1,14 @@
+{
+  "name": "planfait-fpv-film",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "flight": "node scripts/prepare-flight.mjs",
+    "preview": "node scripts/render.mjs --preview",
+    "render": "node scripts/render.mjs",
+    "validate": "node scripts/validate.mjs",
+    "contact": "python scripts/make-contact-sheet.py"
+  },
+  "devDependencies": {"playwright": "1.64.1"}
+}

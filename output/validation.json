@@ -1,0 +1,14 @@
+{
+  "codec": "vp9",
+  "width": 1280,
+  "height": 720,
+  "pixelFormat": "yuv420p",
+  "fps": "24/1",
+  "decodedFrames": 2160,
+  "durationSeconds": 90,
+  "bytes": 20677264,
+  "trackSha256": "1bfb3542667c133e1e38c3ca0c7218eccb00f30ef2efac3d5b65f8840ea12549",
+  "videoSha256": "840509c67f26db13789d670984c70f86816f554ff798252bda72d3432358f187",
+  "airRelativeThermalDegrees": 720,
+  "airRelativeThermalRateDegreesPerSecond": 22.5
+}
