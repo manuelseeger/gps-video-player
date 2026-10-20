@@ -202,7 +202,7 @@ function renderProfile(p) {
   if (cut > 0) ctx.drawImage(bright, 0, 0, cut, canvas.height, 0, 0, cut, canvas.height);
   ctx.setTransform(dpr,0,0,dpr,0,0);
   for(let i=0;i<3;i++) { const yy = 10+i*(h-18)/2; ctx.strokeStyle='#91b0c322'; ctx.lineWidth=1; ctx.beginPath();ctx.moveTo(0,yy);ctx.lineTo(w,yy);ctx.stroke();ctx.fillStyle='#9bb1ba';ctx.font='9px monospace';ctx.fillText(`${Math.round(max-i*(max-min)/2)}m`,2,yy-2); }
-  ctx.fillStyle='#c3cbd1';
+  ctx.fillStyle='#8b9aa3';
   for (const span of videoSpans) ctx.fillRect(x(span.start), h-5, x(span.end)-x(span.start), 4);
   ctx.strokeStyle='#eefff8';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(xx,0);ctx.lineTo(xx,h);ctx.stroke();ctx.fillStyle='#c5ffe7';ctx.beginPath();ctx.arc(xx,y(p.alt),3.5,0,Math.PI*2);ctx.fill();
   canvas.setAttribute('aria-valuenow',Math.round((p.t-fixes[0].t)/(fixes.at(-1).t-fixes[0].t)*100));

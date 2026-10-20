@@ -42,7 +42,7 @@ try {
     const pixel=canvas.getContext('2d').getImageData(Math.floor(canvas.width*second/20),canvas.height-3,1,1).data;
     return [...pixel];
   }));
-  const band=[195,203,209,255], empty=[0,0,0,0];
+  const band=[139,154,163,255], empty=[0,0,0,0];
   await expect.poll(()=>bandPixels(first)).toEqual([band,band,empty,band,band,empty]);
   assert.equal(await first.locator('#coverage-summary').count(),0);
   assert.equal(await first.locator('#coverage-legend').count(),0);
