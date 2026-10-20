@@ -39,6 +39,7 @@ export function createPlayer(container, options = {}) {
 const $ = id => root.getElementById(id);
 const panel = $('map-panel'), inset = $('inset-panel');
 let timeline, playback, flightClock;
+let videoSpans = [];
 let fixes, segments, map, overlay, ready = false, mode = 'map', mainView = 'video', following = true, headingFollow = true, drop = false;
 let nudge = 0, current, lastFrame = 0, lastIndex = -1, flown = [], heading = null, lastCamera = 0;
 const initialTime = Number.isFinite(options.initialTime) ? options.initialTime : 0;
@@ -47,6 +48,9 @@ function notice(message) { $('notice').textContent = message; clearTimeout(notic
 const durationText = t => `${t < 0 ? '−' : ''}${Math.floor(Math.abs(t) / 60)}:${String(Math.floor(Math.abs(t) % 60)).padStart(2, '0')}`;
 function updateSync() {
   $('offset').textContent = `${nudge >= 0 ? '+' : ''}${nudge.toFixed(1)} s`;
+  videoSpans = timeline?.coverage(nudge) ?? [];
+  const seconds = videoSpans.reduce((total, span) => total + span.end - span.start, 0);
+  $('coverage-summary').textContent = !timeline ? 'No flight loaded' : videoSpans.length ? `Video: ${videoSpans.length} ${videoSpans.length === 1 ? 'segment' : 'segments'}, ${durationText(seconds)}` : 'No video in flight';
 }
 function adjustSync(delta, reset = false) {
   nudge = reset ? 0 : Math.round((nudge + delta) * 10) / 10;
@@ -200,9 +204,11 @@ function renderProfile(p) {
   if (cut > 0) ctx.drawImage(bright, 0, 0, cut, canvas.height, 0, 0, cut, canvas.height);
   ctx.setTransform(dpr,0,0,dpr,0,0);
   for(let i=0;i<3;i++) { const yy = 10+i*(h-18)/2; ctx.strokeStyle='#91b0c322'; ctx.lineWidth=1; ctx.beginPath();ctx.moveTo(0,yy);ctx.lineTo(w,yy);ctx.stroke();ctx.fillStyle='#9bb1ba';ctx.font='9px monospace';ctx.fillText(`${Math.round(max-i*(max-min)/2)}m`,2,yy-2); }
+  ctx.fillStyle='#c3cbd1';
+  for (const span of videoSpans) ctx.fillRect(x(span.start), h-5, x(span.end)-x(span.start), 4);
   ctx.strokeStyle='#eefff8';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(xx,0);ctx.lineTo(xx,h);ctx.stroke();ctx.fillStyle='#c5ffe7';ctx.beginPath();ctx.arc(xx,y(p.alt),3.5,0,Math.PI*2);ctx.fill();
   canvas.setAttribute('aria-valuenow',Math.round((p.t-fixes[0].t)/(fixes.at(-1).t-fixes[0].t)*100));
-  canvas.setAttribute('aria-valuetext',`${flightClock.format(p.t)} ${flightClock.zoneLabel(p.t)}, ${Math.round(p.alt)} metres`);
+  canvas.setAttribute('aria-valuetext',`${flightClock.format(p.t)} ${flightClock.zoneLabel(p.t)}, ${Math.round(p.alt)} metres, ${timeline.locate(playback.elapsed) ? 'video' : 'no video'}`);
 }
 function frame(now) {
   if (destroyed) return;

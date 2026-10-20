@@ -9,6 +9,18 @@ export class Timeline {
     this.flightEnd = flightEnd;
     this.videoEnd = this.clips.length ? this.clips.at(-1).startUtcSeconds + this.clips.at(-1).durationSeconds - this.origin : 0;
   }
+  coverage(nudge = 0) {
+    const spans = [];
+    for (const clip of this.clips) {
+      const start = Math.max(this.flightStart, clip.startUtcSeconds + nudge);
+      const end = Math.min(this.flightEnd, clip.startUtcSeconds + clip.durationSeconds + nudge);
+      if (end <= start) continue;
+      const previous = spans.at(-1);
+      if (previous && start <= previous.end) previous.end = Math.max(previous.end, end);
+      else spans.push({start, end});
+    }
+    return spans;
+  }
   bounds(nudge = 0) {
     return {start: Math.min(0, this.flightStart - this.origin - nudge), end: Math.max(this.videoEnd, this.flightEnd - this.origin - nudge)};
   }

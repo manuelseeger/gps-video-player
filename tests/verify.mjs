@@ -1,4 +1,4 @@
-import {chromium} from '@playwright/test';
+import {chromium, expect} from '@playwright/test';
 import assert from 'node:assert/strict';
 import {createDemoServer} from './server.mjs';
 import {once} from 'node:events';
@@ -38,6 +38,28 @@ try {
   await page.waitForFunction(()=>window.demo?.players.every(p=>p.state?.mapReady && p.state.phase==='paused')).catch(async error=>{console.error(await page.evaluate(()=>({status:document.getElementById('status').textContent,states:window.demo?.players.map(p=>p.state),notices:[...document.querySelectorAll('.mount')].map(m=>m.firstElementChild?.shadowRoot?.getElementById('notice')?.textContent)})));throw error;});
   const first=page.locator('#first'), second=page.locator('#second');
   const state=()=>page.evaluate(()=>window.demo.players.map(p=>p.state));
+  const bandPixels=mount=>mount.locator('#profile').evaluate(canvas=>[1,3,5,7,9,13].map(second=>{
+    const pixel=canvas.getContext('2d').getImageData(Math.floor(canvas.width*second/20),canvas.height-3,1,1).data;
+    return [...pixel];
+  }));
+  const band=[195,203,209,255], empty=[0,0,0,0];
+  await expect.poll(()=>bandPixels(first)).toEqual([band,band,empty,band,band,empty]);
+  assert.equal(await first.locator('#coverage-summary').textContent(),'Video: 2 segments, 0:08');
+  assert.equal(await first.locator('#profile').getAttribute('aria-describedby'),'coverage-legend');
+  assert.match(await first.locator('#profile').getAttribute('aria-valuetext'),/, video$/);
+  await page.evaluate(()=>window.demo.players[0].setNudge(2));
+  await expect.poll(()=>bandPixels(first)).toEqual([empty,band,band,empty,band,empty]);
+  await expect.poll(()=>bandPixels(second)).toEqual([band,band,empty,band,band,empty]);
+  await page.evaluate(()=>window.demo.players[0].setNudge(0));
+  const profileBounds=await first.locator('#profile').boundingBox();
+  await first.locator('#profile').click({position:{x:profileBounds.width/4,y:profileBounds.height-3}});
+  assert.ok(Math.abs((await state())[0].elapsed-5)<.05,'The coverage band retains canvas seeking');
+  await page.waitForFunction(()=>document.getElementById('first').firstElementChild.shadowRoot.getElementById('profile').getAttribute('aria-valuetext').endsWith(', no video'));
+  await first.locator('#profile').click({position:{x:profileBounds.width/10,y:profileBounds.height-3}});
+  assert.ok(Math.abs((await state())[0].elapsed-2)<.05,'Covered footage retains canvas seeking');
+  await page.waitForFunction(()=>document.getElementById('first').firstElementChild.shadowRoot.getElementById('profile').getAttribute('aria-valuetext').endsWith(', video'));
+  await page.evaluate(()=>window.demo.players[0].seek(0));
+  await page.waitForFunction(()=>window.demo.players[0].state.phase==='paused');
   let states=await state();
   assert.equal(states[0].mediaTime,1);assert.equal(states[0].elapsed,0);
   assert.ok(await first.locator('#map canvas').count());
@@ -68,6 +90,7 @@ try {
   await page.keyboard.press('s');
   await first.locator('#plus').click();
   assert.equal((await state())[0].nudge,.1);assert.equal((await state())[1].nudge,0);
+  await expect.poll(()=>bandPixels(first)).toEqual([band,band,empty,band,band,empty]);
   await first.locator('#reset').click();
   await first.locator('#map canvas').focus();await page.keyboard.press('m');
   assert.equal((await state())[0].mode,'map','Map keyboard does not toggle player mode');
@@ -91,6 +114,15 @@ try {
   });
   const bounds=await first.boundingBox(), inner=await first.locator('#inset-panel').boundingBox();
   assert.ok(inner.x>=bounds.x && inner.x+inner.width<=bounds.x+bounds.width);
+  await page.setViewportSize({width:390,height:1100});
+  await first.locator('#coverage-legend').evaluate(legend=>new Promise(resolve=>requestAnimationFrame(resolve)));
+  const labelFit=await first.locator('.profile-labels').evaluate(labels=>{
+    const [start,legend,end]=[...labels.children].map(el=>el.getBoundingClientRect());
+    const summary=labels.querySelector('#coverage-summary');
+    return {separate:start.right<=legend.left && legend.right<=end.left,inside:legend.left>=labels.getBoundingClientRect().left && legend.right<=labels.getBoundingClientRect().right,full:summary.scrollWidth<=summary.clientWidth};
+  });
+  assert.deepEqual(labelFit,{separate:true,inside:true,full:true});
+  await expect.poll(()=>bandPixels(first)).toEqual([band,band,empty,band,band,empty]);
   await page.setViewportSize({width:1500,height:1100});
   await first.locator('#fullscreen').click();
   await page.waitForFunction(()=>document.fullscreenElement===document.getElementById('first').firstElementChild);
@@ -148,6 +180,7 @@ try {
     window.regressionPlayer=window.demo.createPlayer(mount);await window.regressionPlayer.ready;
   });
   const regression=page.locator('#regression');
+  assert.equal(await regression.locator('#coverage-summary').textContent(),'No flight loaded');
   assert.equal(await regression.locator('#video-status').textContent(),'No flight loaded');
   assert.equal(await regression.locator('#map-status').textContent(),'No flight loaded');
   assert.equal(await regression.locator('#inset-panel').evaluate(el=>el.style.width),'','Hidden mount must not acquire zero-width geometry');
@@ -156,6 +189,17 @@ try {
   assert.ok((await regression.locator('#inset-panel').boundingBox()).height>=120);
   await page.evaluate(async base=>{await window.regressionPlayer.load(base+'/fixtures/regression/manifest.json');window.regressionPlayer.seek(2);},base);
   await page.waitForFunction(()=>window.regressionPlayer.state?.mapReady && window.regressionPlayer.state.phase==='paused' && document.getElementById('regression').firstElementChild.shadowRoot.getElementById('alt').textContent!=='—');
+  await expect.poll(()=>bandPixels(regression)).toEqual([band,band,empty,band,band,empty]);
+  await page.evaluate(async base=>{
+    const manifest=await (await fetch(base+'/fixtures/regression/manifest.json')).json();
+    manifest.clips=[];
+    await window.regressionPlayer.load(manifest,{baseUrl:base+'/fixtures/regression/manifest.json'});
+  },base);
+  await page.waitForFunction(()=>window.regressionPlayer.state?.mapReady);
+  assert.equal(await regression.locator('#coverage-summary').textContent(),'No video in flight');
+  await expect.poll(()=>bandPixels(regression)).toEqual([empty,empty,empty,empty,empty,empty]);
+  assert.match(await regression.locator('#profile').getAttribute('aria-valuetext'),/, no video$/);
+  assert.equal(await first.locator('#coverage-summary').textContent(),'Video: 2 segments, 0:08');
   assert.notEqual(await regression.locator('#title').textContent(),'Flight player');
   assert.notEqual(await regression.locator('#start-label').textContent(),'');
   await page.evaluate(base=>{
@@ -168,11 +212,13 @@ try {
   assert.equal(await regression.locator('#time-zone').textContent(),'TIME');
   assert.equal(await regression.locator('#vario').evaluate(el=>el.style.color),'');
   for(const id of ['start-label','end-label']) assert.equal(await regression.locator('#'+id).textContent(),'');
+  assert.equal(await regression.locator('#coverage-summary').textContent(),'No flight loaded');
   assert.equal(await regression.locator('#profile').getAttribute('aria-valuetext'),'No flight loaded');
   assert.equal(await regression.locator('#profile').evaluate(canvas=>canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data.some(value=>value!==0)),false,'Pending load clears the profile pixels');
   assert.equal(await regression.locator('#map-status').textContent(),'Loading manifest…');
   assert.equal(await regression.locator('#video-status').textContent(),'Loading manifest…');
   await page.evaluate(async()=>{window.rejectRegression(new Error('Expected test failure'));await window.pendingRegression;});
+  assert.equal(await regression.locator('#coverage-summary').textContent(),'No flight loaded');
   assert.equal(await regression.locator('#video-status').textContent(),'Player could not load');
   assert.equal(await regression.locator('#map-status').textContent(),'No flight loaded');
   assert.equal(await regression.locator('#title').textContent(),'Flight player');
