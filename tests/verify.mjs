@@ -44,8 +44,8 @@ try {
   }));
   const band=[195,203,209,255], empty=[0,0,0,0];
   await expect.poll(()=>bandPixels(first)).toEqual([band,band,empty,band,band,empty]);
-  assert.equal(await first.locator('#coverage-summary').textContent(),'Video: 2 segments, 0:08');
-  assert.equal(await first.locator('#profile').getAttribute('aria-describedby'),'coverage-legend');
+  assert.equal(await first.locator('#coverage-summary').count(),0);
+  assert.equal(await first.locator('#coverage-legend').count(),0);
   assert.match(await first.locator('#profile').getAttribute('aria-valuetext'),/, video$/);
   await page.evaluate(()=>window.demo.players[0].setNudge(2));
   await expect.poll(()=>bandPixels(first)).toEqual([empty,band,band,empty,band,empty]);
@@ -115,13 +115,12 @@ try {
   const bounds=await first.boundingBox(), inner=await first.locator('#inset-panel').boundingBox();
   assert.ok(inner.x>=bounds.x && inner.x+inner.width<=bounds.x+bounds.width);
   await page.setViewportSize({width:390,height:1100});
-  await first.locator('#coverage-legend').evaluate(legend=>new Promise(resolve=>requestAnimationFrame(resolve)));
   const labelFit=await first.locator('.profile-labels').evaluate(labels=>{
-    const [start,legend,end]=[...labels.children].map(el=>el.getBoundingClientRect());
-    const summary=labels.querySelector('#coverage-summary');
-    return {separate:start.right<=legend.left && legend.right<=end.left,inside:legend.left>=labels.getBoundingClientRect().left && legend.right<=labels.getBoundingClientRect().right,full:summary.scrollWidth<=summary.clientWidth};
+    const [start,end]=[...labels.children].map(el=>el.getBoundingClientRect());
+    return {separate:start.right<=end.left,inside:start.left>=labels.getBoundingClientRect().left && end.right<=labels.getBoundingClientRect().right};
   });
-  assert.deepEqual(labelFit,{separate:true,inside:true,full:true});
+  assert.deepEqual(labelFit,{separate:true,inside:true});
+  assert.equal(await first.locator('#coverage-summary, #coverage-legend').count(),0);
   await expect.poll(()=>bandPixels(first)).toEqual([band,band,empty,band,band,empty]);
   await page.setViewportSize({width:1500,height:1100});
   await first.locator('#fullscreen').click();
@@ -180,7 +179,6 @@ try {
     window.regressionPlayer=window.demo.createPlayer(mount);await window.regressionPlayer.ready;
   });
   const regression=page.locator('#regression');
-  assert.equal(await regression.locator('#coverage-summary').textContent(),'No flight loaded');
   assert.equal(await regression.locator('#video-status').textContent(),'No flight loaded');
   assert.equal(await regression.locator('#map-status').textContent(),'No flight loaded');
   assert.equal(await regression.locator('#inset-panel').evaluate(el=>el.style.width),'','Hidden mount must not acquire zero-width geometry');
@@ -196,10 +194,9 @@ try {
     await window.regressionPlayer.load(manifest,{baseUrl:base+'/fixtures/regression/manifest.json'});
   },base);
   await page.waitForFunction(()=>window.regressionPlayer.state?.mapReady);
-  assert.equal(await regression.locator('#coverage-summary').textContent(),'No video in flight');
   await expect.poll(()=>bandPixels(regression)).toEqual([empty,empty,empty,empty,empty,empty]);
   assert.match(await regression.locator('#profile').getAttribute('aria-valuetext'),/, no video$/);
-  assert.equal(await first.locator('#coverage-summary').textContent(),'Video: 2 segments, 0:08');
+  await expect.poll(()=>bandPixels(first)).toEqual([band,band,empty,band,band,empty]);
   assert.notEqual(await regression.locator('#title').textContent(),'Flight player');
   assert.notEqual(await regression.locator('#start-label').textContent(),'');
   await page.evaluate(base=>{
@@ -212,13 +209,11 @@ try {
   assert.equal(await regression.locator('#time-zone').textContent(),'TIME');
   assert.equal(await regression.locator('#vario').evaluate(el=>el.style.color),'');
   for(const id of ['start-label','end-label']) assert.equal(await regression.locator('#'+id).textContent(),'');
-  assert.equal(await regression.locator('#coverage-summary').textContent(),'No flight loaded');
   assert.equal(await regression.locator('#profile').getAttribute('aria-valuetext'),'No flight loaded');
   assert.equal(await regression.locator('#profile').evaluate(canvas=>canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data.some(value=>value!==0)),false,'Pending load clears the profile pixels');
   assert.equal(await regression.locator('#map-status').textContent(),'Loading manifest…');
   assert.equal(await regression.locator('#video-status').textContent(),'Loading manifest…');
   await page.evaluate(async()=>{window.rejectRegression(new Error('Expected test failure'));await window.pendingRegression;});
-  assert.equal(await regression.locator('#coverage-summary').textContent(),'No flight loaded');
   assert.equal(await regression.locator('#video-status').textContent(),'Player could not load');
   assert.equal(await regression.locator('#map-status').textContent(),'No flight loaded');
   assert.equal(await regression.locator('#title').textContent(),'Flight player');

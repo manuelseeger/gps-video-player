@@ -49,8 +49,6 @@ const durationText = t => `${t < 0 ? '−' : ''}${Math.floor(Math.abs(t) / 60)}:
 function updateSync() {
   $('offset').textContent = `${nudge >= 0 ? '+' : ''}${nudge.toFixed(1)} s`;
   videoSpans = timeline?.coverage(nudge) ?? [];
-  const seconds = videoSpans.reduce((total, span) => total + span.end - span.start, 0);
-  $('coverage-summary').textContent = !timeline ? 'No flight loaded' : videoSpans.length ? `Video: ${videoSpans.length} ${videoSpans.length === 1 ? 'segment' : 'segments'}, ${durationText(seconds)}` : 'No video in flight';
 }
 function adjustSync(delta, reset = false) {
   nudge = reset ? 0 : Math.round((nudge + delta) * 10) / 10;
