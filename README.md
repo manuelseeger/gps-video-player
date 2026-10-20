@@ -34,6 +34,14 @@ An empty player displays "No flight loaded". A hidden mount keeps the default in
 
 Set the container height to at least 480 px. A width of at least 320 px is recommended. Each player appends one host element and uses its own Shadow DOM. It leaves the container's existing children intact. It does not read page URL parameters, use storage, or register page keyboard listeners. Multiple instances can share a page. Call `destroy()` before you remove a mount.
 
+## TypeScript
+
+The npm package includes declarations. Import types with `import type {Manifest, Player, PlayerOptions} from 'gps-video-player'`. Renderer packages are not required for type checking. `createPlayer` is the only runtime export.
+
+`PlaybackState` describes `statechange` and `load` event snapshots. `PlayerState` adds telemetry, view mode and map readiness for `player.state`. The player state, telemetry sample, clip index, clip URL and media times can be `null`. A `maperror` message can be `undefined`. Manifest timestamps and numeric ranges are validated at runtime.
+
+Run `npm run test:types` to build, pack and install the package in a temporary consumer, then check NodeNext, Bundler and legacy Node resolution.
+
 ## Controls
 
 Click or Tab into one player to use its shortcuts. Page controls and other instances are unaffected.
