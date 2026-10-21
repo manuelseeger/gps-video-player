@@ -139,22 +139,24 @@ try {
   });
   const bounds=await first.boundingBox(), inner=await first.locator('#inset-panel').boundingBox();
   assert.ok(inner.x>=bounds.x && inner.x+inner.width<=bounds.x+bounds.width);
-  await page.setViewportSize({width:390,height:1100});
-  await expectHints(first);
-  assert.equal(await first.locator('.player').evaluate(shell=>{
-    const bounds=shell.getBoundingClientRect();
-    return [...shell.querySelectorAll('button kbd')].every(hint=>{
-      const box=hint.getBoundingClientRect();
-      return box.left>=bounds.left && box.right<=bounds.right && box.top>=bounds.top && box.bottom<=bounds.bottom;
+  for(const width of [390,342]) {
+    await page.setViewportSize({width,height:1100});
+    await expectHints(first);
+    assert.equal(await first.locator('.player').evaluate(shell=>{
+      const bounds=shell.getBoundingClientRect();
+      return [...shell.querySelectorAll('button kbd')].every(hint=>{
+        const box=hint.getBoundingClientRect();
+        return box.left>=bounds.left && box.right<=bounds.right && box.top>=bounds.top && box.bottom<=bounds.bottom;
+      });
+    }),true,'Button hints remain inside the narrow player');
+    const labelFit=await first.locator('.profile-labels').evaluate(labels=>{
+      const [start,end]=[...labels.children].map(el=>el.getBoundingClientRect());
+      return {separate:start.right<=end.left,inside:start.left>=labels.getBoundingClientRect().left && end.right<=labels.getBoundingClientRect().right};
     });
-  }),true,'Button hints remain inside the narrow player');
-  const labelFit=await first.locator('.profile-labels').evaluate(labels=>{
-    const [start,end]=[...labels.children].map(el=>el.getBoundingClientRect());
-    return {separate:start.right<=end.left,inside:start.left>=labels.getBoundingClientRect().left && end.right<=labels.getBoundingClientRect().right};
-  });
-  assert.deepEqual(labelFit,{separate:true,inside:true});
-  assert.equal(await first.locator('#coverage-summary, #coverage-legend').count(),0);
-  await expect.poll(()=>bandPixels(first)).toEqual([band,band,empty,band,band,empty]);
+    assert.deepEqual(labelFit,{separate:true,inside:true});
+    assert.equal(await first.locator('#coverage-summary, #coverage-legend').count(),0);
+    await expect.poll(()=>bandPixels(first)).toEqual([band,band,empty,band,band,empty]);
+  }
   await page.setViewportSize({width:1500,height:1100});
   await page.locator('h1').first().click();await page.keyboard.press('f');
   assert.equal(await page.evaluate(()=>document.fullscreenElement),null,'Page F does not enter fullscreen');

@@ -2,7 +2,7 @@
   "name": "gps-video-player",
   "private": false,
   "license": "MIT",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "type": "module",
   "scripts": {
     "dev": "npm run build && vite --config demo/vite.config.js --host 0.0.0.0 --port 5173",
@@ -11,7 +11,9 @@
     "test": "node --test src/*.test.js scripts/*.test.mjs && npm run test:types",
     "test:types": "node scripts/test-types.mjs",
     "verify": "node tests/verify.mjs",
-    "test:browser": "node tests/verify.mjs && node scripts/verify-camera.mjs",
+    "test:browser": "node tests/verify.mjs && node tests/verify-quality.mjs && node tests/verify-window-controls.mjs && node scripts/verify-camera.mjs",
+    "test:quality": "node tests/verify-quality.mjs",
+    "test:controls": "node tests/verify-window-controls.mjs",
     "test:camera": "node scripts/verify-camera.mjs",
     "prepack": "npm run build"
   },
