@@ -409,6 +409,7 @@ try {
   await attribution().button.focus();
   await attrPage.keyboard.press('Enter');
   await expectAttribution(true);
+  await attrPage.locator('#follow').click();
   await dragMap();
   await expectAttribution(false);
   await attribution().button.focus();
@@ -427,6 +428,7 @@ try {
   await expectAttribution(true);
   assert.deepEqual(await hrefs(),expectedHrefs);
   await attrPage.locator('#swap').click();
+  await attrPage.locator('#follow').click();
   const expandedBox=await attrPage.locator('#map canvas').boundingBox();
   await attrPage.mouse.move(expandedBox.x+80, expandedBox.y+160);
   await attrPage.mouse.down();
