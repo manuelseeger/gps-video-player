@@ -16,6 +16,7 @@ export interface PlayerOptions extends ResourceLoadingOptions {
   manifest?: ManifestInput;
   initialTime?: number;
   muted?: boolean;
+  initialAttribution?: 'collapsed' | 'expanded';
   nonce?: string;
 }
 

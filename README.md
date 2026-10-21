@@ -127,6 +127,7 @@ Options:
 - `baseUrl`: absolute HTTP(S) URL. Required for an inline manifest; also resolves a relative manifest URL. The player does not use the host page as an implicit base.
 - `initialTime`: finite elapsed seconds, default 0. Used for each load.
 - `muted`: initial mute state for each load, default `true`.
+- `initialAttribution`: `'collapsed'` or `'expanded'`, default `'collapsed'`. The start state of the map attribution for each load. The info button opens the attribution. Dragging the map closes it. Any other value throws a `TypeError`.
 - `fetch`: optional Fetch-compatible adapter for manifest, IGC, style JSON and TileJSON requests. Must honor the supplied abort signal and security options and return a Response-compatible object. Preserve `response.url` after redirects.
 - `request`: `{headers, credentials}` for these JSON/text requests. Credentials default to `omit`.
 - `authOrigin`: explicit absolute HTTP(S) URL that sets the single allowed origin for `request` headers and cookies. Required when `request.headers` has any header, even a non-auth header, or `request.credentials` is not `omit`. The player does not infer this origin. It stays fixed across redirects and successive manifest loads unless you override it.
