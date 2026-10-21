@@ -26,6 +26,9 @@ const resources: ResourceLoadingOptions = {
   authOrigin: 'https://example.com',
 };
 const options: PlayerOptions = {...resources, manifest, initialTime: 3, muted: true, nonce: 'nonce'};
+const collapsed: PlayerOptions = {initialAttribution: 'collapsed'};
+const expanded: PlayerOptions = {initialAttribution: 'expanded'};
+void [collapsed, expanded];
 const player: Player = createPlayer(document.createElement('div'), options);
 expectType<Promise<Player>>(player.ready);
 expectType<Promise<Player>>(player.load(manifest, resources));
@@ -116,6 +119,8 @@ const badPhase: PlaybackPhase = 'ready';
 createPlayer(null);
 // @ts-expect-error
 createPlayer(document.body, {autoplay: true});
+// @ts-expect-error
+createPlayer(document.body, {initialAttribution: true});
 // @ts-expect-error
 player.load(manifest, {muted: false});
 // @ts-expect-error

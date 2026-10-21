@@ -13,9 +13,11 @@ import {loadManifest} from './manifest.js';
 import {template} from './template.js';
 import {FlightMapView} from './map-view.js';
 import {smoothHeading} from './heading.js';
+import {PlayerAttributionControl, parseInitialAttribution} from './attribution-control.js';
 
 export function createPlayer(container, options = {}) {
   if (!container || typeof container.append !== 'function') throw new TypeError('A container element is required');
+  const initialAttribution = parseInitialAttribution(options.initialAttribution);
   const host = document.createElement('div');
   host.style.cssText = 'display:block;width:100%;height:100%;min-height:480px';
   container.append(host);
@@ -300,7 +302,7 @@ async function load(input, overrides = {}) {
     $('map-status').textContent = 'Loading map…';
     acquireRenderer(); ownsWorker = true;
     map = new maplibregl.Map({
-      container:$('map'), attributionControl:{compact:true}, center:[current.lon,current.lat],
+      container:$('map'), attributionControl:false, center:[current.lon,current.lat],
       zoom:14.3, pitch:64, bearing:current.heading, maxPitch:85,
       canvasContextAttributes:{antialias:true}, style,
       // Tile/media credentials belong in signed resource URLs, never inherited headers.
@@ -309,6 +311,7 @@ async function load(input, overrides = {}) {
     // deck.gl 9.4 reads the render transform directly. MapLibre 6 keeps it on its camera.
     // Keep this bridge local to our pinned renderer pair, not on either prototype.
     Object.defineProperty(map, 'transform', {get:() => map._camera.transform});
+    map.addControl(new PlayerAttributionControl(initialAttribution));
     map.addControl(new maplibregl.NavigationControl({visualizePitch:true}), 'top-right');
     map.on('error', e => { if (token === generation) { $('map-status').textContent = 'Map resource error'; emit('maperror', {message:e.error?.message}); } });
     map.on('load', () => {
