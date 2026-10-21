@@ -53,9 +53,9 @@ Click or Tab into one player to use its shortcuts. Page controls and other insta
 | Space | Play or pause |
 | M | Switch Map/HUD mode |
 | S | Swap main and inset views in Map mode |
-| X | Toggle fullscreen for this player |
+| F | Toggle fullscreen for this player |
 | Escape | Exit fullscreen for this player |
-| F | Toggle position following |
+| C | Toggle position following |
 | H | Toggle heading following |
 | D | Toggle the altitude drop line, which is off by default |
 | U | Toggle mute |

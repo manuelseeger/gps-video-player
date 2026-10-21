@@ -38,6 +38,30 @@ try {
   await page.waitForFunction(()=>window.demo?.players.every(p=>p.state?.mapReady && p.state.phase==='paused')).catch(async error=>{console.error(await page.evaluate(()=>({status:document.getElementById('status').textContent,states:window.demo?.players.map(p=>p.state),notices:[...document.querySelectorAll('.mount')].map(m=>m.firstElementChild?.shadowRoot?.getElementById('notice')?.textContent)})));throw error;});
   const first=page.locator('#first'), second=page.locator('#second');
   const state=()=>page.evaluate(()=>window.demo.players.map(p=>p.state));
+  const expectHints=async mount=>{
+    for(const [id,key] of Object.entries({play:'Space',mode:'M',swap:'S',follow:'C',heading:'H',mute:'U',fullscreen:'F',takeoff:'T',landing:'L',minus:',',plus:'.',reset:'R'})) {
+      await expect(mount.locator(`#${id} kbd`)).toHaveText(key);
+      await expect(mount.locator(`#${id} kbd`)).toBeVisible();
+    }
+  };
+  await expectHints(first);
+  await expectHints(second);
+  await expect(first.locator('#fullscreen')).toHaveAttribute('aria-keyshortcuts','f Escape');
+  await expect(first.locator('#fullscreen')).toHaveAttribute('title','Fullscreen (F / Escape)');
+  for(const [key,id,changed,restored] of [
+    ['c','follow','↟ Follow pilot C','Following C'],
+    ['h','heading','Heading off H','Heading on H'],
+    ['u','mute','♪ U','Muted U'],
+  ]) {
+    await first.locator('.player').focus();
+    await page.keyboard.press(key);
+    await expect(first.locator('#'+id)).toHaveText(changed);
+    await page.keyboard.press(key);
+    await expect(first.locator('#'+id)).toHaveText(restored);
+  }
+  await expect(second.locator('#follow')).toHaveText('Following C');
+  await expect(second.locator('#heading')).toHaveText('Heading on H');
+  await expect(second.locator('#mute')).toHaveText('Muted U');
   const bandPixels=mount=>mount.locator('#profile').evaluate(canvas=>[1,3,5,7,9,13].map(second=>{
     const pixel=canvas.getContext('2d').getImageData(Math.floor(canvas.width*second/20),canvas.height-3,1,1).data;
     return [...pixel];
@@ -84,6 +108,7 @@ try {
   assert.equal((await state())[0].mode,'map','Page keyboard is not captured');
   await first.locator('.player').focus();await page.keyboard.press('m');
   assert.equal((await state())[0].mode,'hud');assert.equal((await state())[1].mode,'map');
+  await expect(first.locator('#mode')).toHaveText('HUD M');
   assert.equal(await first.locator('#swap').isDisabled(),true);
   await page.keyboard.press('m');await page.keyboard.press('s');
   assert.equal((await state())[0].mainView,'map');
@@ -115,6 +140,14 @@ try {
   const bounds=await first.boundingBox(), inner=await first.locator('#inset-panel').boundingBox();
   assert.ok(inner.x>=bounds.x && inner.x+inner.width<=bounds.x+bounds.width);
   await page.setViewportSize({width:390,height:1100});
+  await expectHints(first);
+  assert.equal(await first.locator('.player').evaluate(shell=>{
+    const bounds=shell.getBoundingClientRect();
+    return [...shell.querySelectorAll('button kbd')].every(hint=>{
+      const box=hint.getBoundingClientRect();
+      return box.left>=bounds.left && box.right<=bounds.right && box.top>=bounds.top && box.bottom<=bounds.bottom;
+    });
+  }),true,'Button hints remain inside the narrow player');
   const labelFit=await first.locator('.profile-labels').evaluate(labels=>{
     const [start,end]=[...labels.children].map(el=>el.getBoundingClientRect());
     return {separate:start.right<=end.left,inside:start.left>=labels.getBoundingClientRect().left && end.right<=labels.getBoundingClientRect().right};
@@ -123,17 +156,38 @@ try {
   assert.equal(await first.locator('#coverage-summary, #coverage-legend').count(),0);
   await expect.poll(()=>bandPixels(first)).toEqual([band,band,empty,band,band,empty]);
   await page.setViewportSize({width:1500,height:1100});
-  await first.locator('#fullscreen').click();
+  await page.locator('h1').first().click();await page.keyboard.press('f');
+  assert.equal(await page.evaluate(()=>document.fullscreenElement),null,'Page F does not enter fullscreen');
+  await first.locator('#seek').focus();await page.keyboard.press('f');
+  assert.equal(await page.evaluate(()=>document.fullscreenElement),null,'Native input F is preserved');
+  await first.locator('.player').evaluate(shell=>{
+    const input=document.createElement('div');input.id='editable-test';input.contentEditable='true';input.textContent='Edit';shell.append(input);input.focus();
+  });
+  await page.keyboard.press('f');
+  assert.equal(await page.evaluate(()=>document.fullscreenElement),null,'Editable F is preserved');
+  await first.locator('#editable-test').evaluate(input=>input.remove());
+  await first.locator('.player').focus();await page.keyboard.press('x');
+  assert.equal(await page.evaluate(()=>document.fullscreenElement),null,'X does not enter fullscreen');
+  await page.keyboard.press('f');
   await page.waitForFunction(()=>document.fullscreenElement===document.getElementById('first').firstElementChild);
-  await first.locator('#fullscreen').click();
+  await page.keyboard.press('x');
+  assert.equal(await page.evaluate(()=>document.fullscreenElement===document.getElementById('first').firstElementChild),true,'X does not exit fullscreen');
+  await page.keyboard.press('f');
   await page.waitForFunction(()=>!document.fullscreenElement);
+  await second.locator('.player').focus();await page.keyboard.press('f');
+  await page.waitForFunction(()=>document.fullscreenElement===document.getElementById('second').firstElementChild);
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(()=>!document.fullscreenElement);
+  await expectHints(first);
   await page.evaluate(()=>window.demo.players[0].seek(1.5));
   await page.waitForFunction(()=>window.demo.players[0].state?.phase==='paused' && Math.abs(window.demo.players[0].state.mediaTime-2.5)<.1);
   await page.evaluate(()=>window.demo.players[0].play());
   await page.waitForFunction(()=>window.demo.players[0].state.elapsed>1.8);
+  await expect(first.locator('#play')).toHaveText('❚❚ Pause Space');
   states=await state();assert.equal(states[1].elapsed,0);assert.ok(Math.abs(states[0].utc-(states[0].origin+states[0].elapsed))<.01);
   assert.ok(Math.abs(states[0].sample.alt-(400+states[0].elapsed*3))<1);
   await page.evaluate(()=>window.demo.players[0].pause());
+  await expect(first.locator('#play')).toHaveText('▶ Play Space');
   await page.evaluate(()=>window.demo.players[0].seek(3.7));
   await page.waitForFunction(()=>window.demo.players[0].state.phase==='paused');
   await page.evaluate(()=>window.demo.players[0].play());
@@ -157,7 +211,8 @@ try {
   assert.equal(await first.locator('#volume').inputValue(),'1');
   assert.equal(await first.locator('video').evaluate(video=>video.volume),1);
   assert.equal(await first.locator('video').evaluate(video=>video.playbackRate),1);
-  assert.equal(await first.locator('#mute').textContent(),'Muted');
+  await expect(first.locator('#mute')).toHaveText('Muted U');
+  await expectHints(first);
   await page.evaluate(async base=>{
     const manifest=await (await fetch(base+'/fixtures/regression/manifest.json')).json();
     manifest.track.igc=await (await fetch(base+'/fixtures/regression/track.igc')).text();delete manifest.track.url;

@@ -39,6 +39,7 @@ export function createPlayer(container, options = {}) {
   function emit(type, detail) { if (!destroyed) events.dispatchEvent(new CustomEvent(type, {detail})); }
 
 const $ = id => root.getElementById(id);
+function setButtonLabel(id, label) { $(id).firstChild.textContent = `${label} `; }
 const panel = $('map-panel'), inset = $('inset-panel');
 let timeline, playback, flightClock;
 let videoSpans = [];
@@ -83,7 +84,7 @@ function syncRate(rate) {
 }
 function playbackChanged(state) {
   syncRate(state.rate);
-  $('play').textContent = state.playing ? '❚❚ Pause' : '▶ Play';
+  setButtonLabel('play', state.playing ? '❚❚ Pause' : '▶ Play');
   $('seek').min = state.start;
   $('seek').max = state.end;
   if (queuedSeek === null) $('seek').value = state.elapsed;
@@ -95,7 +96,7 @@ function playbackChanged(state) {
 }
 function setFollowing(value) {
   following = value;
-  $('follow').textContent = value ? 'Following' : '↟ Follow pilot';
+  setButtonLabel('follow', value ? 'Following' : '↟ Follow pilot');
   $('follow').classList.toggle('active', value);
   panel.classList.toggle('orbit', !value);
 }
@@ -110,7 +111,7 @@ function applyMode() {
   panel.classList.toggle('hud', hud);
   $('video-panel').classList.toggle('main-view', !mapMain);
   $('video-panel').classList.toggle('inset-view', mapMain);
-  $('mode').innerHTML = `${hud ? 'HUD' : 'Map'} <kbd>M</kbd>`;
+  setButtonLabel('mode', hud ? 'HUD' : 'Map');
   $('swap').setAttribute('aria-pressed', String(mainView === 'map'));
   $('swap').classList.toggle('active', mainView === 'map');
   $('swap').disabled = hud;
@@ -253,10 +254,10 @@ function clearSession() {
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height);
   canvas.setAttribute('aria-valuenow', '0');
   canvas.setAttribute('aria-valuetext', 'No flight loaded');
-  $('play').textContent = '▶ Play'; $('elapsed').textContent = '— / —';
+  setButtonLabel('play', '▶ Play'); $('elapsed').textContent = '— / —';
   $('seek').min = 0; $('seek').max = 1; $('seek').value = 0;
   syncRate(1); $('volume').value = 1;
-  $('mute').textContent = (options.muted ?? true) ? 'Muted' : '♪';
+  setButtonLabel('mute', (options.muted ?? true) ? 'Muted' : '♪');
   nudge = 0; updateSync();
 }
 async function load(input, overrides = {}) {
@@ -292,7 +293,7 @@ async function load(input, overrides = {}) {
       onError: message => { notice(message); emit('mediaerror', {message}); },
     });
     playback.setAudio(1, options.muted ?? true);
-    $('mute').textContent = playback.muted ? 'Muted' : '♪';
+    setButtonLabel('mute', playback.muted ? 'Muted' : '♪');
     playback.seek(initialTime);
     if (destroyed || token !== generation) throw new DOMException('Load replaced', 'AbortError');
     current = sample(fixes, timeline.trackUtc(playback.elapsed));
@@ -340,14 +341,14 @@ async function load(input, overrides = {}) {
 $('mode').onclick=()=>{mode=mode==='map'?'hud':'map';applyMode();};
 $('swap').onclick=()=>{mainView=mainView==='video'?'map':'video';applyMode();};
 $('follow').onclick=()=>{setFollowing(!following);if(following)updateCamera(current,true);};
-$('heading').onclick=()=>{headingFollow=!headingFollow;$('heading').textContent=`Heading ${headingFollow?'on':'off'}`;$('heading').classList.toggle('active',headingFollow);};
+$('heading').onclick=()=>{headingFollow=!headingFollow;setButtonLabel('heading',`Heading ${headingFollow?'on':'off'}`);$('heading').classList.toggle('active',headingFollow);};
 $('opacity').oninput=()=>{$('map').style.opacity=mode==='hud'||mainView==='map'?1:$('opacity').value;};
 $('play').onclick=()=>{if(playback)playback.playing?playback.pause():playback.play();};
 $('seek').oninput=e=>queueSeek(+e.target.value);
 $('seek').onchange=finishSeek;
 $('rate').onchange=e=>playback?.setRate(+e.target.value);
-$('volume').oninput=e=>{playback?.setAudio(+e.target.value,false);$('mute').textContent='♪';};
-$('mute').onclick=()=>{if(playback){playback.setAudio(playback.volume,!playback.muted);$('mute').textContent=playback.muted?'Muted':'♪';}};
+$('volume').oninput=e=>{playback?.setAudio(+e.target.value,false);setButtonLabel('mute','♪');};
+$('mute').onclick=()=>{if(playback){playback.setAudio(playback.volume,!playback.muted);setButtonLabel('mute',playback.muted?'Muted':'♪');}};
 $('fullscreen').onclick=()=> {
   const promise = isFullscreen() ? document.exitFullscreen() : (!document.fullscreenElement ? host.requestFullscreen() : Promise.resolve());
   promise?.catch(error => notice(error.message));
@@ -393,8 +394,8 @@ const resizeObserver = new ResizeObserver(() => { clampInset(); map?.resize(); }
 resizeObserver.observe(shell); resizeObserver.observe(inset); observers.push(resizeObserver);
 const shortcuts = [
   ['Space','play','click'], ['m','mode','click'], ['s','swap','click'],
-  ['f','follow','click'], ['h','heading','click'],
-  ['u','mute','click'], ['x','fullscreen','click'], ['Escape','fullscreen','click'], ['t','takeoff','click'], ['l','landing','click'],
+  ['c','follow','click'], ['h','heading','click'],
+  ['u','mute','click'], ['f','fullscreen','click'], ['Escape','fullscreen','click'], ['t','takeoff','click'], ['l','landing','click'],
   [',','minus','click',true], ['.','plus','click',true], ['r','reset','click'],
   ['o','opacity','focus'], ['k','seek','focus'], ['v','volume','focus'],
   ['b','rate','focus'], ['p','profile','focus'], ['i','inset-handle','focus'],
@@ -405,6 +406,14 @@ for(const element of new Set(shortcuts.filter(shortcut=>shortcut.element!==shell
   const label=element.title||element.getAttribute('aria-label')||element.labels?.[0]?.textContent.trim()||element.textContent.trim();
   element.title=`${label} (${bindings.map(({key,repeat})=>`${key.length===1?key.toUpperCase():key}${repeat?' / Shift for 1 s':''}`).join(' / ')})`;
   element.setAttribute('aria-keyshortcuts',bindings.map(({key,repeat})=>`${key}${repeat?` Shift+${key}`:''}`).join(' '));
+  if(element.tagName==='BUTTON') {
+    const key=bindings[0].key;
+    const hint=document.createElement('kbd');
+    hint.textContent=key.length===1?key.toUpperCase():key;
+    hint.setAttribute('aria-hidden','true');
+    element.firstChild.textContent+=' ';
+    element.append(hint);
+  }
 }
 shell.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&!isFullscreen())return;
