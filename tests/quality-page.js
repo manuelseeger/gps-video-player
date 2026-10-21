@@ -2,6 +2,9 @@ import {createPlayer} from '/dist/player.js';
 
 const track = await (await fetch('/fixtures/regression/track.igc')).text();
 const options = [{id: 'economy', label: 'Data saver'}, {id: 'detail', label: 'Fine view'}];
+const blobs = new Map(await Promise.all([
+  ['economy', '/quality/first'], ['detail', '/quality/cdn/other'],
+].map(async ([quality, url]) => [quality, await (await fetch(url)).blob()])));
 const manifest = () => ({version: 2, track: {igc: track, startUtc: '2030-01-01T23:59:55Z'},
   qualities: {options, default: 'economy', fallback: ['economy', 'detail']},
   clips: [{startUtc: '2030-01-01T23:59:55Z', durationSeconds: 5, sources: {
@@ -23,8 +26,7 @@ for (const [index, player] of players.entries()) {
 }
 const catalogue = revision => ({revision, options, default: 'economy', fallback: ['economy', 'detail']});
 async function blobSource(request) {
-  const response = await fetch(request.quality === 'economy' ? '/quality/first' : '/quality/cdn/other');
-  const url = URL.createObjectURL(await response.blob());
+  const url = URL.createObjectURL(blobs.get(request.quality === 'economy' ? 'economy' : 'detail'));
   owned.add(url);
   return {status: 'source', source: {quality: request.quality, url, mediaStartSeconds: request.quality === 'economy' ? 2 : 7,
     release: () => {owned.delete(url); released.push({request: request.request, url}); URL.revokeObjectURL(url);}}};
