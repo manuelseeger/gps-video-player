@@ -7,11 +7,38 @@ const base='https://app.test/data/manifest.json';
 const copy=()=>structuredClone(fixture);
 test('v1 resolves relative URLs and keeps metadata and trim ranges',()=>{
   const m=validateManifest(fixture,base);
-  assert.equal(m.track.url,'https://app.test/data/track.igc');assert.equal(m.clips[0].src,'https://app.test/data/demo.webm');
-  assert.equal(m.clips[0].mediaOffsetSeconds,1);assert.equal(m.clips[1].startUtcSeconds-m.clips[0].startUtcSeconds,6);
+  assert.equal(m.track.url,'https://app.test/data/track.igc');assert.equal(m.sources[0].original.url,'https://app.test/data/demo.webm');
+  assert.equal(m.sources[0].original.mediaStartSeconds,1);assert.equal(m.clips[1].startUtcSeconds-m.clips[0].startUtcSeconds,6);
   assert.equal(m.metadata.title,fixture.metadata.title);
   const inline=copy();delete inline.track.url;inline.track.igc='data';inline.clips=[];
   assert.equal(validateManifest(inline,base).track.igc,'data');
+});
+test('v1 blobs declare ownership without storing a lease on the logical clip', () => {
+  const raw = copy();
+  raw.clips[0].url = 'blob:https://app.test/owned';
+  assert.throws(() => validateManifest(raw, base), /ownership/);
+  const release = () => {};
+  raw.clips[0].release = release;
+  const manifest = validateManifest(raw, base);
+  assert.equal(manifest.sources[0].original.release, release);
+  assert.equal(manifest.clips[0].release, undefined);
+});
+test('v2 resolves static descriptors against the owning document without changing logical clips', () => {
+  const raw = copy();
+  raw.version = 2;
+  raw.qualities = {options: [{id: 'economy', label: 'Data saver'}, {id: 'detail', label: 'Fine view'}], default: 'detail', fallback: ['economy']};
+  raw.clips = [{startUtc: raw.clips[0].startUtc, durationSeconds: 4, sources: {
+    economy: {url: './unrelated.webm?sig=%7Bx%7D&a=a+b', mediaStartSeconds: 2},
+    detail: {url: 'https://other.test/opaque', type: 'video/mp4', mediaStartSeconds: 7},
+  }}, {startUtc: raw.clips[1].startUtc, durationSeconds: 4, sources: {economy: {url: './later'}}}];
+  const m = validateManifest(raw, base);
+  assert.equal(m.sources[0].economy.url, 'https://app.test/data/unrelated.webm?sig=%7Bx%7D&a=a+b');
+  assert.equal(m.sources[0].detail.mediaStartSeconds, 7);
+  assert.deepEqual(m.qualities.availability, [{economy: 'available', detail: 'available'}, {economy: 'available', detail: 'unavailable'}]);
+  assert.equal(m.clips[0].src, undefined);
+  assert.equal(m.clips[0].mediaOffsetSeconds, undefined);
+  raw.clips[0].sources.other = {url: './unknown'};
+  assert.throws(() => validateManifest(raw, base), /catalogue/);
 });
 test('strict UTC timestamps reject ambiguous, impossible or normalized dates',()=>{
   for(const v of ['2030-02-30T00:00:00Z','2030-01-01','2030-01-01T00:00:00+00:00','2030-01-01T24:00:00Z','2030-01-01T00:00:60Z','2030-01-01T00:00:00.0000Z',NaN,null]) assert.throws(()=>utcInstant(v));
@@ -30,7 +57,7 @@ test('final response URL anchors manifest URLs after redirects',async()=>{
     return {ok:true,text:async()=> 'IGC'};
   };
   const result=await loadManifest(base,{fetch},new AbortController().signal);
-  assert.equal(result.manifest.clips[0].src,'https://cdn.test/release/demo.webm');
+  assert.equal(result.manifest.sources[0].original.url,'https://cdn.test/release/demo.webm');
   assert.equal(calls[1][0],'https://cdn.test/release/track.igc');
 });
 test('auth headers and cookies are origin-scoped; authenticated redirects fail closed',async()=>{

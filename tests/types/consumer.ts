@@ -3,6 +3,7 @@ import type {
   Manifest, ManifestTrack, ManifestClip, ManifestMetadata, ManifestMap, MapStyle,
   Player, PlayerOptions, ResourceLoadingOptions, PlaybackState, PlayerState,
   TelemetrySample, PlaybackPhase, PlayerEventDetailMap, PlayerEventListener,
+  QualityCatalogueInput, QualityAck, LoadId, QualityState, ManifestV2, DeliveryAdapter, SourceResolver,
 } from 'gps-video-player';
 
 function expectType<T>(value: T): void { void value; }
@@ -69,7 +70,10 @@ const onState: PlayerEventListener<'statechange'> = event => {
   for (const value of [state.elapsed, state.utc, state.origin, state.start, state.end, state.rate, state.nudge, state.readyState]) expectType<number>(value);
   expectType<boolean>(state.playing);
   expectType<number | null>(state.clipIndex);
-  expectType<string | null>(state.src);
+  // @ts-expect-error
+  state.src;
+  expectType<LoadId>(state.load);
+  expectType<QualityState | null>(state.quality);
   expectType<number | null>(state.localTime);
   expectType<number | null>(state.mediaTime);
   const phases: Record<PlaybackPhase, true> = {paused: true, gap: true, loading: true, playing: true, buffering: true, error: true};
@@ -138,3 +142,43 @@ player.state = null;
 // @ts-expect-error
 new Player();
 void [badVersion, bothSources, noSource, noDuration, badClip, noClips, badMap, badPhase];
+
+const qualities: QualityCatalogueInput = {
+  revision: 1, options: [{id: 'saver', label: 'Data saver'}, {id: 'auto', label: 'Auto', mode: 'auto', delivery: {kind: 'provider'}}],
+  default: 'saver', fallback: ['saver'], availability: [{auto: 'unknown'}],
+};
+const v2: ManifestV2 = {version: 2, track, qualities, clips: [{startUtc: clip.startUtc, durationSeconds: 10, sources: {
+  saver: {url: './anything', mediaStartSeconds: 2, type: 'video/webm'},
+}}]};
+const resolver: SourceResolver = async request => {
+  expectType<LoadId>(request.load);
+  expectType<AbortSignal>(request.signal);
+  expectType<number>(request.localTime);
+  expectType<number>(request.clip.index);
+  return {status: 'source', source: {quality: request.quality, url: 'https://media.example/source', release: async () => {}}};
+};
+const adapter: DeliveryAdapter = {kind: 'provider', adaptive: true, pinned: true, supports: () => true,
+  async attach(media, source, signal) {
+    expectType<HTMLVideoElement>(media); expectType<AbortSignal>(signal);
+    return {...(source.rendition === null ? {} : {confirmedRendition: source.rendition}), rendition: () => null, detach() {}};
+  }};
+const qualityPlayer = createPlayer(document.body, {manifest: v2, qualities, resolveSource: resolver, deliveries: [adapter], sourceTimeouts: {resolveMs: 1000}});
+player.load(v2, {qualities, resolveSource: resolver});
+expectType<Promise<QualityAck>>(player.selectQuality('saver'));
+player.selectQuality('auto').then(ack => {
+  if (ack.status === 'applied') { expectType<string>(ack.active); expectType<boolean>(ack.playing); }
+  if (ack.status === 'failed') { expectType<string>(ack.message); expectType<boolean>(ack.retryable); }
+  if (ack.status === 'cancelled') expectType<string>(ack.reason);
+});
+if (qualityPlayer.state) qualityPlayer.updateQualities(qualityPlayer.state.load, {...qualities, revision: 2});
+player.on('qualitycatalogue', event => expectType<QualityState | null>(event.detail.quality));
+player.on('qualitychange', event => { expectType<LoadId>(event.detail.load); expectType<number>(event.detail.revision); });
+// @ts-expect-error
+player.updateQualities('another-flight', qualities);
+// @ts-expect-error
+const badMode: QualityCatalogueInput = {...qualities, options: [{id: 'x', label: 'X', mode: 'best'}]};
+// @ts-expect-error
+const badResolution: SourceResolver = () => ({status: 'source', source: {url: 'https://example.com'}});
+// @ts-expect-error
+const unconfirmed: DeliveryAdapter = {kind: 'provider', adaptive: true, supports: () => true, attach: adapter.attach};
+void [badMode, badResolution, unconfirmed];

@@ -5,6 +5,8 @@ import {parseIGC, sample, varioColor, clamp} from './flight.js';
 import {FlightClock} from './flight-time.js';
 import {Timeline} from './timeline.js';
 import {Playback} from './playback.js';
+import {createDeliveries, parseCatalogue, staticResolver} from './sources.js';
+import {createQualityControl} from './quality-control.js';
 import {shortcutForEvent} from './shortcuts.js';
 import css from './style.css?inline';
 import mapCss from 'maplibre-gl/dist/maplibre-gl.css?inline';
@@ -18,6 +20,11 @@ import {PlayerAttributionControl, parseInitialAttribution} from './attribution-c
 export function createPlayer(container, options = {}) {
   if (!container || typeof container.append !== 'function') throw new TypeError('A container element is required');
   const initialAttribution = parseInitialAttribution(options.initialAttribution);
+  const instanceId = Array.from(crypto.getRandomValues(new Uint32Array(4)), value => value.toString(16)).join('-');
+  const probe = document.createElement('video');
+  const deliveries = createDeliveries(options.deliveries, type => probe.canPlayType(type));
+  const timeouts = {resolveMs: options.sourceTimeouts?.resolveMs ?? 15000, readyMs: options.sourceTimeouts?.readyMs ?? 20000};
+  if (Object.values(timeouts).some(ms => !Number.isFinite(ms) || ms <= 0 || ms > 60000)) throw new Error('Invalid source timeouts');
   const host = document.createElement('div');
   host.style.cssText = 'display:block;width:100%;height:100%;min-height:480px';
   container.append(host);
@@ -40,6 +47,9 @@ export function createPlayer(container, options = {}) {
 
 const $ = id => root.getElementById(id);
 function setButtonLabel(id, label) { $(id).firstChild.textContent = `${label} `; }
+const renderQuality = createQualityControl({row: $('quality-row'), label: $('quality-control'), select: $('quality'),
+  status: $('quality-status'), retry: $('quality-retry'), onSelect: id => api.selectQuality(id),
+  onRetry: () => playback && api.selectQuality(playback.requested)});
 const panel = $('map-panel'), inset = $('inset-panel');
 let timeline, playback, flightClock;
 let videoSpans = [];
@@ -89,7 +99,8 @@ function playbackChanged(state) {
   $('seek').max = state.end;
   if (queuedSeek === null) $('seek').value = state.elapsed;
   $('elapsed').textContent = `${durationText(state.elapsed)} / ${durationText(state.end)}`;
-  const label = state.clipIndex === null ? 'No video' : state.phase === 'error' ? 'Video error' : ['loading', 'buffering'].includes(state.phase) ? 'Loading video…' : '';
+  renderQuality(state);
+  const label = state.clipIndex === null ? 'No video' : state.phase === 'error' ? `${state.error?.message ?? 'Video error'} Press Play to retry.` : ['loading', 'buffering'].includes(state.phase) ? 'Loading video…' : '';
   $('video-status').textContent = label;
   $('video-status').hidden = !label;
   emit('statechange', state);
@@ -131,7 +142,6 @@ function applyMode() {
   }
   $('map').style.opacity = hud || mapMain ? 1 : $('opacity').value;
   $('opacity').disabled = hud || mapMain;
-  if (hud) notice('HUD is a GPS chase-camera visualization, not calibrated camera-pose AR. Click Follow to disengage and orbit.');
 }
 // Destination point from lon/lat given bearing (deg) and distance (m); flat-earth is fine at these ranges.
 function offset(p, bearingDeg, metres) {
@@ -231,10 +241,11 @@ function frame(now) {
   if (ready) {updateCamera(current);overlay.setProps({layers:layers(current)});}
 }
 const layerVisibility = new Map();
-function clearSession() {
+function clearSession(reason = 'load') {
   clearTimeout(seekTimer); clearTimeout(noticeTimer); queuedSeek = null;
   dragging = null; profileDragging = false;
-  playback?.destroy(); playback = null;
+  playback?.destroy(reason); playback = null;
+  renderQuality(null);
   ready = false;
   if (map) { map.remove(); map = null; overlay = null; }
   if (ownsWorker) { releaseRenderer(); ownsWorker = false; }
@@ -280,20 +291,33 @@ async function load(input, overrides = {}) {
     segments = fixes.slice(0,-1).map((p,i)=>({path:[p.position,fixes[i+1].position],color:varioColor(p.vario)}));
     timeline = new Timeline(manifest, fixes[0].t, fixes.at(-1).t);
     nudge = 0; updateSync();
+    let catalogueInput = overrides.qualities ?? manifest.qualities;
+    if (overrides.resolveSource && !overrides.qualities && catalogueInput) {
+      const {availability, ...unknownAvailability} = catalogueInput;
+      catalogueInput = unknownAvailability;
+    }
+    const parse = input => parseCatalogue(input, {clipCount: manifest.clips.length, deliveries});
+    const session = {load: `${instanceId}:${token}`, catalogue: catalogueInput ? parse(catalogueInput) : null,
+      parseCatalogue: parse, resolve: overrides.resolveSource ?? staticResolver(manifest.sources, typeof input === 'object' ? input?.clips : undefined), deliveries, timeouts};
     playback = new Playback(timeline, {
+      session,
       createMedia: () => {
         const video = document.createElement('video');
-        video.id = 'video'; video.playsInline = true; video.preload = 'auto';
+        video.className = 'flight-video'; video.playsInline = true; video.preload = 'auto';
         video.crossOrigin = 'anonymous'; video.setAttribute('aria-label','Flight video');
         $('video-panel').prepend(video);
         return video;
       },
-      clearMedia: () => $('video')?.remove(),
+      removeMedia: media => media.remove(),
       onChange: playbackChanged,
-      onError: message => { notice(message); emit('mediaerror', {message}); },
+      onError: (message, detail) => { notice(message); emit('mediaerror', {message, ...detail}); },
+      onQuality: detail => emit('qualitychange', detail),
+      onCatalogue: detail => emit('qualitycatalogue', detail),
     });
     playback.setAudio(1, options.muted ?? true);
     setButtonLabel('mute', playback.muted ? 'Muted' : '♪');
+    emit('qualitycatalogue', {load: session.load, quality: playback.quality});
+    if (destroyed || token !== generation) throw new DOMException('Load replaced', 'AbortError');
     playback.seek(initialTime);
     if (destroyed || token !== generation) throw new DOMException('Load replaced', 'AbortError');
     current = sample(fixes, timeline.trackUtc(playback.elapsed));
@@ -370,7 +394,7 @@ function insetRect() {
   return {left:r.left-s.left, top:r.top-s.top, width:r.width, height:r.height};
 }
 function setInsetGeometry(left,top,width=inset.offsetWidth,height=inset.offsetHeight) {
-  const w = shell.clientWidth, h = Math.max(0, shell.clientHeight - 235);
+  const w = shell.clientWidth, h = Math.max(0, shell.clientHeight - root.querySelector('.dashboard').offsetHeight);
   if (!w || !h || !inset.offsetWidth || !inset.offsetHeight) return;
   width = clamp(width, Math.min(180,w), w); height = clamp(height, Math.min(120,h), h);
   inset.style.width = width + 'px'; inset.style.height = height + 'px';
@@ -398,7 +422,7 @@ const shortcuts = [
   ['u','mute','click'], ['f','fullscreen','click'], ['Escape','fullscreen','click'], ['t','takeoff','click'], ['l','landing','click'],
   [',','minus','click',true], ['.','plus','click',true], ['r','reset','click'],
   ['o','opacity','focus'], ['k','seek','focus'], ['v','volume','focus'],
-  ['b','rate','focus'], ['p','profile','focus'], ['i','inset-handle','focus'],
+  ['q','quality','focus'], ['b','rate','focus'], ['p','profile','focus'], ['i','inset-handle','focus'],
 ].map(([key,id,activation,repeat=false])=>({key,element:$(id),activation,repeat}));
 shortcuts.push({key:'d',element:shell,activation:'toggle-drop'});
 for(const element of new Set(shortcuts.filter(shortcut=>shortcut.element!==shell).map(shortcut=>shortcut.element))) {
@@ -430,6 +454,8 @@ const api = {
   get ready() { return initialReady; },
   get state() { return playback ? {...playback.state, mode, mainView, sample:current ? {...current, position:[...current.position]} : null, mapReady:ready} : null; },
   load,
+  selectQuality(id) { return playback?.selectQuality(id) ?? Promise.resolve({status: 'rejected', reason: 'no-flight'}); },
+  updateQualities(loadId, catalogue) { return playback?.updateCatalogue(loadId, catalogue) ?? {status: 'rejected', reason: 'stale-load', message: 'The flight load is no longer current.'}; },
   play() { assertLive(); playback?.play(); },
   pause() { assertLive(); playback?.pause(); },
   seek(seconds) { assertLive(); seek(seconds); },
@@ -452,12 +478,12 @@ const api = {
     uiController.abort();
     for (const [type, entries] of listeners) for (const listener of entries) events.removeEventListener(type, listener);
     listeners.clear();
-    clearSession(); root.replaceChildren(); host.remove();
+    clearSession('destroy'); root.replaceChildren(); host.remove();
   },
 };
 clearSession(); applyMode();
 raf = requestAnimationFrame(frame);
-const initialReady = options.manifest === undefined ? Promise.resolve(api) : load(options.manifest);
+const initialReady = options.manifest === undefined ? Promise.resolve(api) : load(options.manifest, {qualities: options.qualities, resolveSource: options.resolveSource});
 // Keep ignored initialization failures from becoming unhandled rejections. ready still rejects.
 initialReady.catch(() => {});
 return api;
