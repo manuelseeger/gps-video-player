@@ -51,6 +51,9 @@ Click or Tab into one player to use its shortcuts. Page controls and other insta
 | Key | Action |
 | --- | --- |
 | Space | Play or pause |
+| Left / Right | Seek backward/forward 10 s |
+| Shift+Left / Shift+Right | Seek backward/forward 60 s |
+| Ctrl+Shift+Left / Ctrl+Shift+Right | Seek backward/forward 600 s |
 | M | Switch Map/HUD mode |
 | S | Swap main and inset views in Map mode |
 | F | Toggle fullscreen for this player |
@@ -73,11 +76,10 @@ Click or Tab into one player to use its shortcuts. Page controls and other insta
 | Q | Focus the quality selector when available |
 | I | Focus the inset handle |
 
-When the altitude profile has focus:
+Seek shortcuts work anywhere in the focused player except the controls that use arrow keys. Alt+Arrow and Meta+Arrow are not used because browsers use them for history. The altitude profile uses the same seek shortcuts. When it has focus:
 
 | Key | Action |
 | --- | --- |
-| Left / Right | Seek backward/forward 5 s |
 | Home / End | Seek to track start/end |
 
 When the inset handle has focus in Map mode:
@@ -91,7 +93,7 @@ Tab and Shift+Tab move focus between controls. Focused sliders and selectors use
 
 Click or drag the altitude profile to seek. Drag the inset handle to move the inset, or drag its corner to resize it. Inset geometry is constrained to the player.
 
-Player shortcuts do not handle input in text fields, native sliders and selectors, links, editable content or map controls. They also ignore input during composition or with command modifiers. Space and Enter keep their native button actions. Only sync nudge shortcuts repeat. Focused MapLibre controls keep their native keyboard behavior.
+Arrow seek shortcuts do not handle input in text fields, selectors, sliders, editable content, the map or the inset handle. Player shortcuts do not handle input in text fields, native sliders and selectors, links, editable content or map controls. They also ignore input during composition or with command modifiers. Space and Enter keep their native button actions. Only sync nudge shortcuts repeat. Focused MapLibre controls keep their native keyboard behavior.
 
 During clips, media time drives playback. Track time pauses while media loads or buffers. In gaps, a monotonic clock advances the track. Switching files can cause buffering. A 30-second buffering stall stops playback and emits an error. Source resolution and source readiness have separate timers, including while paused. Press Play to retry. Scrubbing commits after 150 ms or on release.
 

@@ -9,6 +9,7 @@ import {Playback} from './playback.js';
 import {createDeliveries, parseCatalogue, staticResolver} from './sources.js';
 import {createQualityControl} from './quality-control.js';
 import {shortcutForEvent} from './shortcuts.js';
+import {seekDeltaForEvent} from './seek-keys.js';
 import css from './style.css?inline';
 import mapCss from 'maplibre-gl/dist/maplibre-gl.css?inline';
 import {acquireRenderer, releaseRenderer} from './renderer-lifecycle.js';
@@ -407,7 +408,6 @@ $('profile').onpointermove=e=>{if(profileDragging)profileSeek(e);};
 $('profile').onpointerup=$('profile').onpointercancel=()=>{profileDragging=false;finishSeek();};
 $('profile').onkeydown=e=>{
   if(e.defaultPrevented||e.isComposing||e.keyCode===229||e.ctrlKey||e.metaKey||e.altKey||!fixes)return;
-  if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();seek((playback?.elapsed??0)+(e.key==='ArrowLeft'?-5:5));}
   if(e.key==='Home'||e.key==='End'){e.preventDefault();seekUtc(e.key==='Home'?fixes[0].t:fixes.at(-1).t);}
 };
 function insetRect() {
@@ -461,6 +461,8 @@ for(const element of new Set(shortcuts.filter(shortcut=>shortcut.element!==shell
   }
 }
 shell.addEventListener('keydown',e=>{
+  const delta=seekDeltaForEvent(e);
+  if(delta!==null&&playback&&!destroyed){e.preventDefault();seek(playback.elapsed+delta);return;}
   if(e.key==='Escape'&&!isFullscreen())return;
   const shortcut=shortcutForEvent(e,shortcuts);
   if(!shortcut)return;

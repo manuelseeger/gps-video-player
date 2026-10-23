@@ -151,9 +151,75 @@ try {
   await first.locator('#seek').focus();await page.keyboard.press('m');
   assert.equal((await state())[0].mode,'map','Native input keyboard is preserved');
   await first.locator('#profile').focus();await page.keyboard.press('ArrowRight');
-  assert.equal((await state())[0].elapsed,5);
+  assert.equal((await state())[0].elapsed,10);
   await page.keyboard.press('Home');
   await page.waitForFunction(()=>window.demo.players[0].state.phase==='paused');
+  {
+    const at=async(i,t)=>{await page.evaluate(([i,t])=>window.demo.players[i].seek(t),[i,t]);await page.waitForFunction(i=>window.demo.players[i].state.phase!=='loading',i);};
+    const elapsed=async i=>(await state())[i].elapsed;
+    const end=(await state())[0].end;
+    const nav=()=>page.evaluate(()=>({length:history.length,href:location.href}));
+    const navBefore=await nav();
+    await first.locator('.player').focus();
+    await at(0,0);await at(1,0);
+    for(const [keys,from,expected] of [
+      ['ArrowRight',0,10],['ArrowLeft',12,2],['ArrowLeft',15,5],['ArrowLeft',3,0],
+      ['Shift+ArrowRight',0,Math.min(60,end)],['Shift+ArrowLeft',end,Math.max(0,end-60)],
+      ['Control+Shift+ArrowRight',0,Math.min(600,end)],['Control+Shift+ArrowLeft',end,0],
+    ]) {
+      await at(0,from);await page.keyboard.press(keys);
+      assert.equal(await elapsed(0),expected,`${keys} from ${from}`);
+      assert.equal(await elapsed(1),0,`${keys} does not seek another player`);
+    }
+    assert.deepEqual(await nav(),navBefore,'Ctrl+Shift+Arrow does not navigate history');
+    for(const keys of ['Control+ArrowRight','Alt+ArrowRight','Meta+ArrowRight','Alt+Shift+ArrowRight']) {
+      await at(0,1);await page.keyboard.press(keys);
+      assert.equal(await elapsed(0),1,`${keys} is ignored`);
+    }
+    await at(0,0);await page.evaluate(()=>window.demo.players[0].play());
+    await page.waitForFunction(()=>window.demo.players[0].state.playing);
+    await page.keyboard.press('ArrowRight');
+    assert.ok(await elapsed(0)>=10,'Arrow seeks while playing');
+    await page.evaluate(()=>window.demo.players[0].pause());
+    for(const id of ['#seek','#volume','#opacity','#inset-handle']) {
+      await at(0,0);await first.locator(id).focus();
+      await page.keyboard.press('ArrowRight');
+      assert.equal(await elapsed(0)>=10 && id!=='#seek',false,`${id} keeps arrows`);
+    }
+    await first.locator('.player').evaluate(shell=>{
+      const input=document.createElement('input');input.id='arrow-text';input.value='abc';shell.append(input);input.focus();
+      const area=document.createElement('div');area.id='arrow-edit';area.contentEditable='true';area.textContent='edit';shell.append(area);
+    });
+    await at(0,0);await first.locator('#arrow-text').focus();await page.keyboard.press('ArrowRight');
+    assert.equal(await elapsed(0),0,'Text input keeps arrows');
+    await first.locator('#arrow-edit').focus();await page.keyboard.press('ArrowRight');
+    assert.equal(await elapsed(0),0,'Editable content keeps arrows');
+    await first.locator('#arrow-text, #arrow-edit').evaluateAll(els=>els.forEach(el=>el.remove()));
+    await first.locator('#map canvas').focus();await page.keyboard.press('ArrowRight');
+    assert.equal(await elapsed(0),0,'Map keeps arrows');
+    await first.locator('.player').focus();await at(0,0);await page.keyboard.press('f');
+    await page.waitForFunction(()=>document.fullscreenElement===document.getElementById('first').firstElementChild);
+    await page.keyboard.press('ArrowRight');
+    assert.equal(await elapsed(0),10,'Arrow seeks in fullscreen');
+    await page.keyboard.press('f');await page.waitForFunction(()=>!document.fullscreenElement);
+    await second.locator('.player').focus();await at(0,0);await at(1,0);
+    await page.keyboard.press('Shift+ArrowRight');
+    assert.equal(await elapsed(1),Math.min(60,end),'Second player seeks');assert.equal(await elapsed(0),0,'First player does not seek');
+    await at(1,0);
+    const handled=await page.evaluate(async()=>{
+      const mount=document.createElement('div');document.body.append(mount);
+      const player=window.demo.createPlayer(mount,{manifest:new URL('/fixtures/regression/manifest.json',location.href).href,muted:true});
+      await player.ready;
+      const shell=mount.firstElementChild.shadowRoot.querySelector('.player'),send=()=>{const e=new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,cancelable:true});shell.dispatchEvent(e);return e.defaultPrevented;};
+      const live=send();
+      player.destroy();
+      const afterDestroy=send();
+      mount.remove();
+      return {live,afterDestroy};
+    });
+    assert.deepEqual(handled,{live:true,afterDestroy:false},'Destroyed player does not seek');
+    await at(0,0);
+  }
   const insetBefore=await first.locator('#inset-panel').boundingBox();
   await first.locator('#inset-handle').focus();await page.keyboard.press('ArrowLeft');
   const insetAfter=await first.locator('#inset-panel').boundingBox();
