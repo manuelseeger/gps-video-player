@@ -54,7 +54,7 @@ const panel = $('map-panel'), inset = $('inset-panel');
 let timeline, playback, flightClock;
 let videoSpans = [];
 let fixes, segments, map, overlay, ready = false, mode = 'map', mainView = 'video', following = true, headingFollow = true, drop = false;
-let nudge = 0, current, lastFrame = 0, lastIndex = -1, flown = [], heading = null, lastCamera = 0;
+let advancedSync = options.advancedSync === true, nudge = 0, current, lastFrame = 0, lastIndex = -1, flown = [], heading = null, lastCamera = 0;
 let mapPointerHeld = false;
 for (const event of ['pointerup', 'pointercancel']) window.addEventListener(event, e => {
   if (e.isPrimary) mapPointerHeld = false;
@@ -66,6 +66,17 @@ const durationText = t => `${t < 0 ? '−' : ''}${Math.floor(Math.abs(t) / 60)}:
 function updateSync() {
   $('offset').textContent = `${nudge >= 0 ? '+' : ''}${nudge.toFixed(1)} s`;
   videoSpans = timeline?.coverage(nudge) ?? [];
+  const showRow = advancedSync || nudge !== 0;
+  $('sync-controls').hidden = !showRow;
+  for (const id of ['minus', 'plus', 'reset']) { $(id).hidden = !advancedSync; $(id).disabled = !advancedSync; }
+  $('advanced').setAttribute('aria-pressed', String(advancedSync));
+  $('advanced').classList.toggle('active', advancedSync);
+  shell.classList.toggle('sync-hidden', !showRow);
+  shell.classList.toggle('sync-readout', showRow && !advancedSync);
+}
+function setAdvancedSync(on) {
+  advancedSync = !!on;
+  updateSync();
 }
 function adjustSync(delta, reset = false) {
   nudge = reset ? 0 : Math.round((nudge + delta) * 10) / 10;
@@ -384,7 +395,7 @@ $('fullscreen').onclick=()=> {
   const promise = isFullscreen() ? document.exitFullscreen() : (!document.fullscreenElement ? host.requestFullscreen() : Promise.resolve());
   promise?.catch(error => notice(error.message));
 };
-$('minus').onclick=e=>adjustSync(e.shiftKey?-1:-.1);$('plus').onclick=e=>adjustSync(e.shiftKey?1:.1);$('reset').onclick=()=>adjustSync(0,true);
+$('minus').onclick=e=>adjustSync(e.shiftKey?-1:-.1);$('plus').onclick=e=>adjustSync(e.shiftKey?1:.1);$('reset').onclick=()=>adjustSync(0,true);$('advanced').onclick=()=>setAdvancedSync(!advancedSync);
 $('takeoff').onclick=()=>fixes&&seekUtc(fixes[0].t);$('landing').onclick=()=>fixes&&seekUtc(fixes.at(-1).t);
 let profileDragging=false;
 function profileSeek(e){if(!fixes)return;const rect=$('profile').getBoundingClientRect();queueSeek(timeline.elapsedAtUtc(fixes[0].t+clamp((e.clientX-rect.left)/rect.width,0,1)*(fixes.at(-1).t-fixes[0].t),nudge));}
@@ -428,7 +439,7 @@ const shortcuts = [
   ['c','follow','click'], ['h','heading','click'],
   ['u','mute','click'], ['f','fullscreen','click'], ['Escape','fullscreen','click'], ['t','takeoff','click'], ['l','landing','click'],
   [',','minus','click',true], ['.','plus','click',true], ['r','reset','click'],
-  ['o','opacity','focus'], ['k','seek','focus'], ['v','volume','focus'],
+  ['a','advanced','click'], ['o','opacity','focus'], ['k','seek','focus'], ['v','volume','focus'],
   ['q','quality','focus'], ['b','rate','focus'], ['p','profile','focus'], ['i','inset-handle','focus'],
 ].map(([key,id,activation,repeat=false])=>({key,element:$(id),activation,repeat}));
 shortcuts.push({key:'d',element:shell,activation:'toggle-drop'});
@@ -459,7 +470,7 @@ shell.addEventListener('keydown',e=>{
 function assertLive() { if (destroyed) throw new Error('Player is destroyed'); }
 const api = {
   get ready() { return initialReady; },
-  get state() { return playback ? {...playback.state, mode, mainView, sample:current ? {...current, position:[...current.position]} : null, mapReady:ready} : null; },
+  get state() { return playback ? {...playback.state, mode, mainView, sample:current ? {...current, position:[...current.position]} : null, mapReady:ready, advancedSync} : null; },
   load,
   selectQuality(id) { return playback?.selectQuality(id) ?? Promise.resolve({status: 'rejected', reason: 'no-flight'}); },
   updateQualities(loadId, catalogue) { return playback?.updateCatalogue(loadId, catalogue) ?? {status: 'rejected', reason: 'stale-load', message: 'The flight load is no longer current.'}; },
@@ -467,6 +478,7 @@ const api = {
   pause() { assertLive(); playback?.pause(); },
   seek(seconds) { assertLive(); seek(seconds); },
   setRate(rate) { assertLive(); playback?.setRate(rate); },
+  setAdvancedSync(on) { assertLive(); setAdvancedSync(on); },
   setNudge(seconds) { assertLive(); nudge = Number.isFinite(seconds) ? seconds : nudge; playback?.setNudge(nudge); updateSync(); },
   on(type, listener) {
     assertLive();

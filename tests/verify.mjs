@@ -39,7 +39,7 @@ try {
   const first=page.locator('#first'), second=page.locator('#second');
   const state=()=>page.evaluate(()=>window.demo.players.map(p=>p.state));
   const expectHints=async mount=>{
-    for(const [id,key] of Object.entries({play:'Space',mode:'M',swap:'S',follow:'C',heading:'H',mute:'U',fullscreen:'F',takeoff:'T',landing:'L',minus:',',plus:'.',reset:'R'})) {
+    for(const [id,key] of Object.entries({play:'Space',mode:'M',swap:'S',follow:'C',heading:'H',mute:'U',fullscreen:'F',takeoff:'T',landing:'L',advanced:'A'})) {
       await expect(mount.locator(`#${id} kbd`)).toHaveText(key);
       await expect(mount.locator(`#${id} kbd`)).toBeVisible();
     }
@@ -113,10 +113,39 @@ try {
   await page.keyboard.press('m');await page.keyboard.press('s');
   assert.equal((await state())[0].mainView,'map');
   await page.keyboard.press('s');
+  await page.keyboard.press('a');
+  const syncLayout=mount=>mount.locator('.player').evaluate(player=>{const r=player.getRootNode();return {dashboard:r.querySelector('.dashboard').getBoundingClientRect().height,views:r.querySelector('#views').getBoundingClientRect().height,row:r.getElementById('sync-controls').getBoundingClientRect().height};});
+  const open=await syncLayout(first);
+  for(const id of ['minus','plus','reset']) {await expect(first.locator(`#${id}`)).toBeVisible();await expect(first.locator(`#${id} kbd`)).toBeVisible();}
+  assert.equal((await state())[0].advancedSync,true,'A opened advanced sync');
   await first.locator('#plus').click();
   assert.equal((await state())[0].nudge,.1);assert.equal((await state())[1].nudge,0);
   await expect.poll(()=>bandPixels(first)).toEqual([band,band,empty,band,band,empty]);
   await first.locator('#reset').click();
+  await page.keyboard.press('a');
+  assert.equal((await state())[0].advancedSync,false,'A closes advanced sync');
+  for(const id of ['minus','plus','reset']) await expect(first.locator(`#${id}`)).toBeHidden();
+  await expect(first.locator('#sync-controls')).toBeHidden();
+  const closed=await syncLayout(first);
+  assert.ok(closed.dashboard<open.dashboard-30&&closed.views>open.views+30,'Closed row releases its height');
+  await page.keyboard.press(',');await page.keyboard.press('.');await page.keyboard.press('r');
+  assert.equal((await state())[0].nudge,0,'Sync shortcuts are inert while closed');
+  await first.locator('#advanced').click();
+  assert.equal((await state())[0].advancedSync,true);
+  await page.evaluate(()=>window.demo.players[0].setAdvancedSync(false));
+  await page.evaluate(()=>window.demo.players[0].setNudge(.4));
+  assert.equal((await state())[0].nudge,.4);
+  await expect(first.locator('#offset')).toHaveText('+0.4 s');
+  await expect(first.locator('#offset')).toBeVisible();
+  await expect(first.locator('#plus')).toBeHidden();
+  const readout=await syncLayout(first);
+  assert.ok(readout.dashboard<open.dashboard&&readout.dashboard>closed.dashboard,'Offset readout reserves a shorter row');
+  await page.evaluate(()=>window.demo.players[0].setNudge(0));
+  await first.locator('.player').focus();
+  await first.locator('#seek').focus();await page.keyboard.press('a');
+  assert.equal((await state())[0].advancedSync,false,'A does not toggle from a slider');
+  await first.locator('.player').focus();await page.keyboard.press('Control+a');
+  assert.equal((await state())[0].advancedSync,false,'Modifier A is ignored');
   await first.locator('#map canvas').focus();await page.keyboard.press('m');
   assert.equal((await state())[0].mode,'map','Map keyboard does not toggle player mode');
   await first.locator('#seek').focus();await page.keyboard.press('m');
@@ -144,7 +173,7 @@ try {
     await expectHints(first);
     assert.equal(await first.locator('.player').evaluate(shell=>{
       const bounds=shell.getBoundingClientRect();
-      return [...shell.querySelectorAll('button kbd')].every(hint=>{
+      return [...shell.querySelectorAll('button kbd')].filter(hint=>hint.getClientRects().length).every(hint=>{
         const box=hint.getBoundingClientRect();
         return box.left>=bounds.left && box.right<=bounds.right && box.top>=bounds.top && box.bottom<=bounds.bottom;
       });

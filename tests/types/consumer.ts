@@ -26,7 +26,7 @@ const resources: ResourceLoadingOptions = {
   request: {headers: new Headers({Authorization: 'token'}), credentials: 'include'},
   authOrigin: 'https://example.com',
 };
-const options: PlayerOptions = {...resources, manifest, initialTime: 3, muted: true, nonce: 'nonce'};
+const options: PlayerOptions = {...resources, manifest, initialTime: 3, muted: true, advancedSync: true, nonce: 'nonce'};
 const collapsed: PlayerOptions = {initialAttribution: 'collapsed'};
 const expanded: PlayerOptions = {initialAttribution: 'expanded'};
 void [collapsed, expanded];
@@ -41,6 +41,7 @@ expectType<void>(player.pause());
 expectType<void>(player.seek(2));
 expectType<void>(player.setRate(0.75));
 expectType<void>(player.setNudge(-1));
+expectType<void>(player.setAdvancedSync(true));
 expectType<PlayerState | null>(player.state);
 if (player.state) {
   const state: PlayerState = player.state;

@@ -87,7 +87,7 @@ try {
     });
     assert.deepEqual(result, {stable: true, contained: true, aboveDashboard: true, bottomRight: true,
       matchedTopInset: true, singleRow: true, noBlankColumn: true, noVisibleLabel: true,
-      nonvisualStatus: true, liveStatus: true, timingOnly: true, dashboardHeight: 235});
+      nonvisualStatus: true, liveStatus: true, timingOnly: true, dashboardHeight: 200});
   };
   const screenshot = name => first.screenshot({path: join(screenshots, name + '.png')});
   await waitQuality('economy');
