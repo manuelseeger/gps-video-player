@@ -55,6 +55,10 @@ let timeline, playback, flightClock;
 let videoSpans = [];
 let fixes, segments, map, overlay, ready = false, mode = 'map', mainView = 'video', following = true, headingFollow = true, drop = false;
 let nudge = 0, current, lastFrame = 0, lastIndex = -1, flown = [], heading = null, lastCamera = 0;
+let mapPointerHeld = false;
+for (const event of ['pointerup', 'pointercancel']) window.addEventListener(event, e => {
+  if (e.isPrimary) mapPointerHeld = false;
+}, {capture:true, signal:uiController.signal});
 const initialTime = Number.isFinite(options.initialTime) ? options.initialTime : 0;
 let noticeTimer;
 function notice(message) { $('notice').textContent = message; clearTimeout(noticeTimer); noticeTimer = setTimeout(() => $('notice').textContent = '', 7000); }
@@ -150,7 +154,7 @@ function offset(p, bearingDeg, metres) {
 }
 const HUD = {back: 45, up: 12, ahead: 350, below: 110};
 function updateCamera(p, force = false) {
-  if (!p || (!following && !force)) return;
+  if (!p || mapPointerHeld || (!following && !force)) return;
   const now = performance.now();
   // Use elapsed time even when rendering is slow; capping it makes smoothing fall behind.
   const dt = (now - lastCamera) / 1000; lastCamera = now;
@@ -243,7 +247,7 @@ function frame(now) {
 const layerVisibility = new Map();
 function clearSession(reason = 'load') {
   clearTimeout(seekTimer); clearTimeout(noticeTimer); queuedSeek = null;
-  dragging = null; profileDragging = false;
+  dragging = null; profileDragging = false; mapPointerHeld = false;
   playback?.destroy(reason); playback = null;
   renderQuality(null);
   ready = false;
@@ -333,6 +337,9 @@ async function load(input, overrides = {}) {
       // Tile/media credentials belong in signed resource URLs, never inherited headers.
       transformRequest: url => ({url, credentials:'omit'}),
     });
+    map.getCanvas().addEventListener('pointerdown', e => {
+      if (e.isPrimary && e.button === 0) mapPointerHeld = true;
+    }, {capture:true, signal:uiController.signal});
     // deck.gl 9.4 reads the render transform directly. MapLibre 6 keeps it on its camera.
     // Keep this bridge local to our pinned renderer pair, not on either prototype.
     Object.defineProperty(map, 'transform', {get:() => map._camera.transform});
