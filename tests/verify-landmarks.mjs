@@ -57,6 +57,11 @@ try {
       output.push([name, player.landmark('takeoff'), player.landmark('landing')]);
       const missing = name === 'endsAirborne' ? 'landing' : 'takeoff';
       output.push([player.seekLandmark(missing), player.state.elapsed, player.state.playing]);
+      if (name === 'ground') {
+        player.play();
+        output.push([player.seekLandmark('landing'), player.state.elapsed, player.state.playing]);
+        player.pause();
+      }
     }
     await player.load({version: 1, track: {igc: 'invalid', startUtc: '2030-01-01T12:00:00Z'}, clips: []},
       {baseUrl: location.href}).catch(() => {});
@@ -76,10 +81,11 @@ try {
     [applied('takeoff', 13), 13],
     [available('landing', 24.5), applied('landing', 24.5), 24.5],
     [available('takeoff', 9.5), applied('landing', 23.5), 23.5],
-    ['Seek to track start', 'Seek to track end'],
+    ['Seek to track start (T)', 'Seek to track end (L)'],
     1.5, 31.5, 1.5, 31.5,
     ['ground', unavailable('takeoff'), unavailable('landing')],
     [unavailable('takeoff'), 2, false],
+    [unavailable('landing'), 2, true],
     ['startsAirborne', unavailable('takeoff'), available('landing', 13)],
     [unavailable('takeoff'), 2, false],
     ['endsAirborne', available('takeoff', 8), unavailable('landing')],
