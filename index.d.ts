@@ -7,6 +7,8 @@ export interface Player {
   play(): void;
   pause(): void;
   seek(seconds: number): void;
+  landmark(landmark: 'takeoff' | 'landing'): LandmarkTarget;
+  seekLandmark(landmark: 'takeoff' | 'landing'): LandmarkSeek;
   setRate(rate: number): void;
   setAdvancedSync(on: boolean): void;
   setNudge(seconds: number): void;
@@ -14,6 +16,16 @@ export interface Player {
   off<K extends keyof PlayerEventDetailMap>(type: K, listener: PlayerEventListener<K>): void;
   destroy(): void;
 }
+
+export type LandmarkTarget =
+  | {status: 'available'; landmark: 'takeoff' | 'landing'; elapsed: number}
+  | {status: 'unavailable'; landmark: 'takeoff' | 'landing'}
+  | {status: 'no-flight'};
+
+export type LandmarkSeek =
+  | {status: 'applied'; landmark: 'takeoff' | 'landing'; elapsed: number}
+  | {status: 'unavailable'; landmark: 'takeoff' | 'landing'}
+  | {status: 'no-flight'};
 
 export interface PlayerOptions extends LoadOptions {
   sourceTimeouts?: {resolveMs?: number; readyMs?: number};

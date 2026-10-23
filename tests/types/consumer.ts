@@ -1,6 +1,6 @@
 import {createPlayer} from 'gps-video-player';
 import type {
-  Manifest, ManifestTrack, ManifestClip, ManifestMetadata, ManifestMap, MapStyle,
+  LandmarkTarget, LandmarkSeek, Manifest, ManifestTrack, ManifestClip, ManifestMetadata, ManifestMap, MapStyle,
   Player, PlayerOptions, ResourceLoadingOptions, PlaybackState, PlayerState,
   TelemetrySample, PlaybackPhase, PlayerEventDetailMap, PlayerEventListener,
   QualityCatalogueInput, QualityAck, LoadId, QualityState, ManifestV2, DeliveryAdapter, SourceResolver,
@@ -39,6 +39,10 @@ expectType<Promise<Player>>(player.load(remote));
 expectType<void>(player.play());
 expectType<void>(player.pause());
 expectType<void>(player.seek(2));
+expectType<LandmarkTarget>(player.landmark('takeoff'));
+expectType<LandmarkSeek>(player.seekLandmark('landing'));
+// @ts-expect-error Only track landmarks are accepted.
+player.landmark('start');
 expectType<void>(player.setRate(0.75));
 expectType<void>(player.setNudge(-1));
 expectType<void>(player.setAdvancedSync(true));

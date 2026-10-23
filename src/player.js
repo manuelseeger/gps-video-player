@@ -3,6 +3,7 @@ import {MapboxOverlay} from '@deck.gl/mapbox';
 import {PathLayer, ScatterplotLayer, LineLayer} from '@deck.gl/layers';
 import {parseIGC, sample, varioColor, clamp} from './flight.js';
 import {FlightClock} from './flight-time.js';
+import {detectLandmarks} from './landmarks.js';
 import {Timeline} from './timeline.js';
 import {Playback} from './playback.js';
 import {createDeliveries, parseCatalogue, staticResolver} from './sources.js';
@@ -52,6 +53,7 @@ const renderQuality = createQualityControl({row: $('quality-row'), label: $('qua
   onRetry: () => playback && api.selectQuality(playback.requested)});
 const panel = $('map-panel'), inset = $('inset-panel');
 let timeline, playback, flightClock;
+let landmarks;
 let videoSpans = [];
 let fixes, segments, map, overlay, ready = false, mode = 'map', mainView = 'video', following = true, headingFollow = true, drop = false;
 let advancedSync = options.advancedSync === true, nudge = 0, current, lastFrame = 0, lastIndex = -1, flown = [], heading = null, lastCamera = 0;
@@ -264,7 +266,7 @@ function clearSession(reason = 'load') {
   ready = false;
   if (map) { map.remove(); map = null; overlay = null; }
   if (ownsWorker) { releaseRenderer(); ownsWorker = false; }
-  fixes = segments = current = timeline = flightClock = null;
+  fixes = segments = current = timeline = flightClock = landmarks = null;
   profileCache = null; heading = null; lastIndex = -1; flown = [];
   layerVisibility.clear();
   $('title').textContent = 'Flight player';
@@ -300,6 +302,7 @@ async function load(input, overrides = {}) {
     fixes = parseIGC(igc);
     const delta = manifest.track.start - fixes[0].t;
     for (const fix of fixes) fix.t += delta;
+    landmarks = detectLandmarks(fixes);
     flightClock = new FlightClock(manifest.metadata.timeZone);
     $('title').textContent = manifest.metadata.title || 'Flight player';
     shell.setAttribute('aria-label', manifest.metadata.title || 'Flight video player');
@@ -477,6 +480,19 @@ const api = {
   play() { assertLive(); playback?.play(); },
   pause() { assertLive(); playback?.pause(); },
   seek(seconds) { assertLive(); seek(seconds); },
+  landmark(landmark) {
+    assertLive();
+    if (!playback) return {status: 'no-flight'};
+    const utc = landmarks[landmark];
+    return utc === null ? {status: 'unavailable', landmark}
+      : {status: 'available', landmark, elapsed: timeline.elapsedAtUtc(utc, nudge)};
+  },
+  seekLandmark(landmark) {
+    const target = api.landmark(landmark);
+    if (target.status !== 'available') return target;
+    api.seek(target.elapsed);
+    return {...target, status: 'applied'};
+  },
   setRate(rate) { assertLive(); playback?.setRate(rate); },
   setAdvancedSync(on) { assertLive(); setAdvancedSync(on); },
   setNudge(seconds) { assertLive(); nudge = Number.isFinite(seconds) ? seconds : nudge; playback?.setNudge(nudge); updateSync(); },

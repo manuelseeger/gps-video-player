@@ -105,6 +105,8 @@ During clips, media time drives playback. Track time pauses while media loads or
 | `load(manifestOrUrl, overrides?)` | Load a v1 or v2 manifest URL or an inline object. Returns a Promise for the same readiness point as `ready`. Aborts the previous load and releases its media and renderer. Each load resets rate to 1× and volume to 1, and applies the initial mute option. Pending and failed loads clear previous flight readouts and the profile. A failed load leaves an empty player. `ready` continues to refer to the initial load. |
 | `play()`, `pause()` | Set playback intent. Browser autoplay rules still apply. Media errors are events. |
 | `seek(seconds)` | Seek on the elapsed axis. Zero is the first clip start, or the first track fix for a track-only manifest. Values are clamped to the union of track and video extents. |
+| `landmark('takeoff' \| 'landing')` | Return a `LandmarkTarget` without a seek. |
+| `seekLandmark('takeoff' \| 'landing')` | Return a `LandmarkSeek`. Seek only when the event is available. |
 | `setRate(number)` | Set the playback rate from 0.0625 to 16 and update the select. Other values are ignored. Preset rates are 0.5, 1, 2 and 4; other API rates appear as a temporary option. |
 | `setAdvancedSync(on)` | Show or hide the sync minus, plus and Reset buttons. Hidden by default; the **Sync** button and the A key toggle it. While hidden, the buttons are disabled and `,`, `.` and R do nothing. A nonzero offset stays visible as a read-only value; at zero the sync row is removed and its space is reclaimed. Closing keeps the current nudge. Initial value: `advancedSync` option. State: `state.advancedSync`. |
 | `setNudge(seconds)` | Shift track time only. Positive values show a later track position for the same video time. Works with advanced mode open or closed. Reset on load; not stored. |
@@ -114,6 +116,18 @@ During clips, media time drives playback. Track time pauses while media loads or
 | `on(type, listener)` | Subscribe to a `CustomEvent`; payload is `event.detail`. Returns an unsubscribe function. |
 | `off(type, listener)` | Remove a subscription. |
 | `destroy()` | Idempotent. Aborts loads, stops media and animation, disconnects resize observers, removes listeners and the host, releases WebGL resources and the shared map worker pool when unused. Other playback control calls then fail. Quality selection returns `rejected` with `no-flight`. |
+
+### Flight landmarks
+
+The pure track detector uses each fix time and the speed that `parseIGC` stores in metres per second. Ground samples have speed below 4 m/s. Airborne samples have speed at or above 8 m/s. A segment must cover at least 3 seconds. Samples between 4 and 8 m/s do not extend either segment and interrupt an unconfirmed run.
+
+Takeoff requires a ground segment followed by an airborne segment. Its time is the first sample of that airborne segment. Landing requires an airborne segment followed by a ground segment. Its time is the first sample of that ground segment. The detector selects the first takeoff and the last landing. A track that starts airborne has no takeoff target. A track that ends airborne has no landing target. Track endpoints are not substitutes for events.
+
+The IGC specification has no takeoff or landing event code. Appendix A7 defines `STA` for task start and `FIN` for task finish. C-record declared takeoff and landing positions do not give event times. The detector does not read those records.
+
+`landmark()` returns `{status: 'available', landmark, elapsed}`, `{status: 'unavailable', landmark}`, or `{status: 'no-flight'}`. `seekLandmark()` returns `applied` instead of `available` after it calls `seek(elapsed)`. Both methods use `timeline.elapsedAtUtc(eventUtc, currentNudge)`. The returned elapsed value is the landmark value before seek clamping. An unavailable event or an empty player does not change playback. Both methods throw after destruction.
+
+The **Takeoff** and **Landing** buttons seek to track start and track end. The T and L shortcuts use these same endpoints, not detected events. Profile Home and End also use track endpoints.
 
 The player emits these events:
 
