@@ -8,6 +8,7 @@ export interface Player {
   pause(): void;
   seek(seconds: number): void;
   setRate(rate: number): void;
+  setAdvancedSync(on: boolean): void;
   setNudge(seconds: number): void;
   on<K extends keyof PlayerEventDetailMap>(type: K, listener: PlayerEventListener<K>): () => void;
   off<K extends keyof PlayerEventDetailMap>(type: K, listener: PlayerEventListener<K>): void;
@@ -20,6 +21,7 @@ export interface PlayerOptions extends LoadOptions {
   manifest?: ManifestInput;
   initialTime?: number;
   muted?: boolean;
+  advancedSync?: boolean;
   initialAttribution?: 'collapsed' | 'expanded';
   nonce?: string;
 }
@@ -117,6 +119,7 @@ export interface PlayerState extends PlaybackState {
   mainView: 'video' | 'map';
   sample: TelemetrySample | null;
   mapReady: boolean;
+  advancedSync: boolean;
 }
 
 export interface TelemetrySample {

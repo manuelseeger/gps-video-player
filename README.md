@@ -61,9 +61,10 @@ Click or Tab into one player to use its shortcuts. Page controls and other insta
 | U | Toggle mute |
 | T | Seek to track start |
 | L | Seek to track end |
-| , / . | Decrease/increase sync offset by 0.1 s |
-| Shift+, / Shift+. | Decrease/increase sync offset by 1 s |
-| R | Reset sync offset |
+| A | Show or hide advanced sync controls (off by default) |
+| , / . | Decrease/increase sync offset by 0.1 s. Advanced mode only |
+| Shift+, / Shift+. | Decrease/increase sync offset by 1 s. Advanced mode only |
+| R | Reset sync offset. Advanced mode only |
 | K | Focus the timeline slider |
 | P | Focus the altitude profile |
 | O | Focus the opacity slider |
@@ -105,7 +106,8 @@ During clips, media time drives playback. Track time pauses while media loads or
 | `play()`, `pause()` | Set playback intent. Browser autoplay rules still apply. Media errors are events. |
 | `seek(seconds)` | Seek on the elapsed axis. Zero is the first clip start, or the first track fix for a track-only manifest. Values are clamped to the union of track and video extents. |
 | `setRate(number)` | Set the playback rate from 0.0625 to 16 and update the select. Other values are ignored. Preset rates are 0.5, 1, 2 and 4; other API rates appear as a temporary option. |
-| `setNudge(seconds)` | Shift track time only. Positive values show a later track position for the same video time. Reset on load; not stored. |
+| `setAdvancedSync(on)` | Show or hide the sync minus, plus and Reset buttons. Hidden by default; the **Sync** button and the A key toggle it. While hidden, the buttons are disabled and `,`, `.` and R do nothing. A nonzero offset stays visible as a read-only value; at zero the sync row is removed and its space is reclaimed. Closing keeps the current nudge. Initial value: `advancedSync` option. State: `state.advancedSync`. |
+| `setNudge(seconds)` | Shift track time only. Positive values show a later track position for the same video time. Works with advanced mode open or closed. Reset on load; not stored. |
 | `selectQuality(id)` | Select an advertised quality. Returns a terminal acknowledgement. Both the native Quality control and app code use this operation. |
 | `updateQualities(loadId, catalogue)` | Replace the catalogue for the current load with a strictly greater revision. Rejects stale load identities, stale revisions and invalid catalogues without changing playback. |
 | `state` | Snapshot, or `null` when empty/destroyed. Includes elapsed, origin, track UTC (Unix seconds), bounds, nudge, phase, play intent, rate, clip index, clip-local time, actual media time, sampled telemetry, mode, main view and `mapReady`. |
@@ -132,6 +134,7 @@ Options:
 - `baseUrl`: absolute HTTP(S) URL. Required for an inline manifest; also resolves a relative manifest URL. The player does not use the host page as an implicit base.
 - `initialTime`: finite elapsed seconds, default 0. Used for each load.
 - `muted`: initial mute state for each load, default `true`.
+- `advancedSync`: show the sync adjustment buttons initially, default `false`.
 - `initialAttribution`: `'collapsed'` or `'expanded'`, default `'collapsed'`. The start state of the map attribution for each load. The info button opens the attribution. Dragging the map closes it. Any other value throws a `TypeError`.
 - `fetch`: optional Fetch-compatible adapter for manifest, IGC, style JSON and TileJSON requests. Must honor the supplied abort signal and security options and return a Response-compatible object. Preserve `response.url` after redirects.
 - `request`: `{headers, credentials}` for these JSON/text requests. Credentials default to `omit`.
