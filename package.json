@@ -11,10 +11,11 @@
     "test": "node --test src/*.test.js scripts/*.test.mjs && npm run test:types",
     "test:types": "node scripts/test-types.mjs",
     "verify": "node tests/verify.mjs",
-    "test:browser": "node tests/verify.mjs && node tests/verify-quality.mjs && node tests/verify-window-controls.mjs && node scripts/verify-camera.mjs",
+    "test:browser": "node tests/verify.mjs && node tests/verify-quality.mjs && node tests/verify-window-controls.mjs && node scripts/verify-camera.mjs && node scripts/verify-map-drag.mjs",
     "test:quality": "node tests/verify-quality.mjs",
     "test:controls": "node tests/verify-window-controls.mjs",
     "test:camera": "node scripts/verify-camera.mjs",
+    "test:map-drag": "node scripts/verify-map-drag.mjs",
     "prepack": "npm run build"
   },
   "devDependencies": {
