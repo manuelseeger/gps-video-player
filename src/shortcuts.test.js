@@ -43,6 +43,15 @@ test('only sync nudges repeat', () => {
   assert.equal(shortcutForEvent(event('p', {repeat:true}), shortcuts), null);
 });
 
+test('can resolve hidden focus targets after guards so the player can reveal their owner', () => {
+  const hidden = [{key:'p',element:control(false,false),activation:'focus'}];
+  assert.equal(shortcutForEvent(event('p'), hidden, true), hidden[0]);
+  for (const extra of [{ctrlKey:true},{repeat:true},{isComposing:true},{target:{closest:()=>({})}}]) {
+    assert.equal(shortcutForEvent(event('p',extra), hidden, true), null);
+  }
+  assert.equal(shortcutForEvent(event('p'), [{key:'p',element:control(true,false),activation:'focus'}], true), null);
+});
+
 test('skips disabled actions and disabled or hidden focus controls', () => {
   assert.equal(shortcutForEvent(event('p'), shortcuts), shortcuts[3]);
   for (const [activation, disabled, visible] of [['click',true,true], ['focus',true,true], ['focus',false,false]]) {

@@ -57,7 +57,9 @@ let timeline, playback, flightClock;
 let landmarks;
 let videoSpans = [];
 let fixes, segments, map, overlay, ready = false, mode = 'map', mainView = 'video', following = true, headingFollow = true, drop = false;
-let advancedSync = options.advancedSync === true, nudge = 0, current, lastFrame = 0, lastIndex = -1, flown = [], heading = null, lastCamera = 0;
+let detailState = {layout:'regular', advancedSync:options.advancedSync === true};
+const advancedSync = () => detailState.layout === 'regular' ? detailState.advancedSync : detailState.detail === 'sync';
+let nudge = 0, current, lastFrame = 0, lastIndex = -1, flown = [], heading = null, lastCamera = 0;
 let mapPointerHeld = false;
 for (const event of ['pointerup', 'pointercancel']) window.addEventListener(event, e => {
   if (e.isPrimary) mapPointerHeld = false;
@@ -66,20 +68,110 @@ const initialTime = Number.isFinite(options.initialTime) ? options.initialTime :
 let noticeTimer;
 function notice(message) { $('notice').textContent = message; clearTimeout(noticeTimer); noticeTimer = setTimeout(() => $('notice').textContent = '', 7000); }
 const durationText = t => `${t < 0 ? '−' : ''}${Math.floor(Math.abs(t) / 60)}:${String(Math.floor(Math.abs(t) % 60)).padStart(2, '0')}`;
+const detailTriggers = {profile:$('compact-profile-toggle'), options:$('compact-options-toggle'), sync:$('advanced')};
+const placements = [
+  [root.querySelector('.telemetry'), $('compact-instruments')],
+  ...['play','seek','elapsed'].map(id => [$(id), $('compact-transport')]),
+  [$('advanced'), $('compact-sync-action')],
+  [$('sync-controls').firstElementChild, $('compact-sync-action')],
+  [$('fullscreen'), $('compact-actions')],
+  [root.querySelector('.profile-wrap'), $('compact-profile')],
+  ...['mode','swap','follow','heading','rate','takeoff','landing','quality-row','mute','volume'].map(id => [$(id), $('compact-options')]),
+  [$('opacity').parentElement, $('compact-options')],
+  [$('sync-controls'), $('compact-sync')],
+].map(([node, destination]) => {
+  const home = document.createComment('');
+  node.before(home);
+  return {node, home, destination};
+});
+const syncReadout = $('offset').parentElement;
+const visible = element => element.getClientRects().length > 0;
+function detailOwner(element) {
+  return ['profile','options','sync'].find(detail => $(`compact-${detail}`).contains(element));
+}
+function repairFocus(element, owner) {
+  if (!element || element === shell || !root.contains(element)) return;
+  if (visible(element)) element.focus({preventScroll:true});
+  else (detailTriggers[owner] ?? shell).focus({preventScroll:true});
+}
+let profilePointer = null, insetPointer = null;
+function cancelGestures() {
+  finishSeek();
+  for (const [element, pointer] of [[$('profile'), profilePointer], [$('inset-handle'), insetPointer]]) {
+    if (pointer !== null && element.hasPointerCapture(pointer)) element.releasePointerCapture(pointer);
+  }
+  profilePointer = insetPointer = null;
+  dragging = null; profileDragging = false; mapPointerHeld = false;
+}
+function renderDetail() {
+  const compact = detailState.layout === 'compact';
+  const selected = compact ? detailState.detail : null;
+  $('compact-controls').hidden = !compact;
+  $('compact-details').hidden = !selected;
+  for (const detail of ['profile','options','sync']) {
+    $(`compact-${detail}`).hidden = detail !== selected;
+    detailTriggers[detail].setAttribute('aria-expanded', String(detail === selected));
+  }
+  $('compact-detail-title').textContent = selected ? {profile:'Altitude profile', options:'Options', sync:'Sync'}[selected] : '';
+  updateSync();
+}
+function selectDetail(next) {
+  if (detailState.layout !== 'compact' || detailState.detail === next) return;
+  const focused = root.activeElement;
+  const owner = detailOwner(focused) ?? ($('compact-details').contains(focused) ? detailState.detail : null);
+  cancelGestures();
+  detailState = {layout:'compact', detail:next};
+  renderDetail();
+  repairFocus(focused, owner);
+}
+function setCompact(enabled) {
+  if (enabled === (detailState.layout === 'compact')) return;
+  const focused = root.activeElement;
+  const destination = placements.find(({node}) => focused && (node === focused || node.contains(focused)))?.destination;
+  const owner = detailOwner(focused) ?? Object.keys(detailTriggers).find(detail => $(`compact-${detail}`) === destination);
+  const sync = advancedSync();
+  cancelGestures();
+  detailState = enabled ? {layout:'compact', detail:sync ? 'sync' : null} : {layout:'regular', advancedSync:sync};
+  for (const {node, home, destination} of placements) {
+    if (enabled) destination.append(node);
+    else home.after(node);
+  }
+  shell.classList.toggle('compact', enabled);
+  setButtonLabel('fullscreen', enabled ? 'Exit' : '⛶');
+  renderDetail();
+  repairFocus(focused, owner);
+}
+for (const detail of ['profile','options']) detailTriggers[detail].addEventListener('click', () => {
+  selectDetail(detailState.detail === detail ? null : detail);
+}, {signal:uiController.signal});
+$('compact-close').addEventListener('click', () => {
+  const selected = detailState.detail;
+  selectDetail(null);
+  detailTriggers[selected]?.focus({preventScroll:true});
+}, {signal:uiController.signal});
 function updateSync() {
   $('offset').textContent = `${nudge >= 0 ? '+' : ''}${nudge.toFixed(1)} s`;
   videoSpans = timeline?.coverage(nudge) ?? [];
-  const showRow = advancedSync || nudge !== 0;
-  $('sync-controls').hidden = !showRow;
-  for (const id of ['minus', 'plus', 'reset']) { $(id).hidden = !advancedSync; $(id).disabled = !advancedSync; }
-  $('advanced').setAttribute('aria-pressed', String(advancedSync));
-  $('advanced').classList.toggle('active', advancedSync);
+  const active = advancedSync(), compact = detailState.layout === 'compact';
+  const showRow = active || nudge !== 0;
+  $('sync-controls').hidden = compact ? !active : !showRow;
+  syncReadout.hidden = compact && !showRow;
+  for (const id of ['minus', 'plus', 'reset']) { $(id).hidden = !active; $(id).disabled = !active; }
+  $('advanced').setAttribute('aria-pressed', String(active));
+  $('advanced').setAttribute('aria-expanded', String(active));
+  $('advanced').setAttribute('aria-controls', compact ? 'compact-sync' : 'sync-controls');
+  $('advanced').classList.toggle('active', active);
   shell.classList.toggle('sync-hidden', !showRow);
-  shell.classList.toggle('sync-readout', showRow && !advancedSync);
+  shell.classList.toggle('sync-readout', showRow && !active);
 }
 function setAdvancedSync(on) {
-  advancedSync = !!on;
-  updateSync();
+  if (detailState.layout === 'compact') {
+    if (on) selectDetail('sync');
+    else if (detailState.detail === 'sync') selectDetail(null);
+  } else {
+    detailState = {layout:'regular', advancedSync:!!on};
+    updateSync();
+  }
 }
 function adjustSync(delta, reset = false) {
   nudge = reset ? 0 : Math.round((nudge + delta) * 10) / 10;
@@ -396,26 +488,27 @@ $('rate').onchange=e=>playback?.setRate(+e.target.value);
 $('volume').oninput=e=>{playback?.setAudio(+e.target.value,false);setButtonLabel('mute','♪');};
 $('mute').onclick=()=>{if(playback){playback.setAudio(playback.volume,!playback.muted);setButtonLabel('mute',playback.muted?'Muted':'♪');}};
 $('fullscreen').onclick=()=> {
+  if (!isFullscreen() && !host.requestFullscreen) { notice('Fullscreen is not available in this browser.'); return; }
   const promise = isFullscreen() ? document.exitFullscreen() : (!document.fullscreenElement ? host.requestFullscreen() : Promise.resolve());
   promise?.catch(error => notice(error.message));
 };
-$('minus').onclick=e=>adjustSync(e.shiftKey?-1:-.1);$('plus').onclick=e=>adjustSync(e.shiftKey?1:.1);$('reset').onclick=()=>adjustSync(0,true);$('advanced').onclick=()=>setAdvancedSync(!advancedSync);
+$('minus').onclick=e=>adjustSync(e.shiftKey?-1:-.1);$('plus').onclick=e=>adjustSync(e.shiftKey?1:.1);$('reset').onclick=()=>adjustSync(0,true);$('advanced').onclick=()=>setAdvancedSync(!advancedSync());
 $('takeoff').onclick=()=>fixes&&seekUtc(fixes[0].t);$('landing').onclick=()=>fixes&&seekUtc(fixes.at(-1).t);
 let profileDragging=false;
 function profileSeek(e){if(!fixes)return;const rect=$('profile').getBoundingClientRect();queueSeek(timeline.elapsedAtUtc(fixes[0].t+clamp((e.clientX-rect.left)/rect.width,0,1)*(fixes.at(-1).t-fixes[0].t),nudge));}
-$('profile').onpointerdown=e=>{profileDragging=true;$('profile').setPointerCapture(e.pointerId);profileSeek(e);};
+$('profile').onpointerdown=e=>{profileDragging=true;profilePointer=e.pointerId;$('profile').setPointerCapture(e.pointerId);profileSeek(e);};
 $('profile').onpointermove=e=>{if(profileDragging)profileSeek(e);};
-$('profile').onpointerup=$('profile').onpointercancel=()=>{profileDragging=false;finishSeek();};
+$('profile').onpointerup=$('profile').onpointercancel=()=>{profileDragging=false;profilePointer=null;finishSeek();};
 $('profile').onkeydown=e=>{
   if(e.defaultPrevented||e.isComposing||e.keyCode===229||e.ctrlKey||e.metaKey||e.altKey||!fixes)return;
   if(e.key==='Home'||e.key==='End'){e.preventDefault();seekUtc(e.key==='Home'?fixes[0].t:fixes.at(-1).t);}
 };
 function insetRect() {
-  const r = inset.getBoundingClientRect(), s = shell.getBoundingClientRect();
+  const r = inset.getBoundingClientRect(), s = $('views').getBoundingClientRect();
   return {left:r.left-s.left, top:r.top-s.top, width:r.width, height:r.height};
 }
 function setInsetGeometry(left,top,width=inset.offsetWidth,height=inset.offsetHeight) {
-  const w = shell.clientWidth, h = Math.max(0, shell.clientHeight - root.querySelector('.dashboard').offsetHeight);
+  const w = $('views').clientWidth, h = $('views').clientHeight;
   if (!w || !h || !inset.offsetWidth || !inset.offsetHeight) return;
   width = clamp(width, Math.min(180,w), w); height = clamp(height, Math.min(120,h), h);
   inset.style.width = width + 'px'; inset.style.height = height + 'px';
@@ -424,9 +517,9 @@ function setInsetGeometry(left,top,width=inset.offsetWidth,height=inset.offsetHe
   inset.style.right = 'auto';
 }
 let dragging;
-$('inset-handle').onpointerdown=e=>{if(mode==='hud')return;const r=insetRect();dragging={x:e.clientX,y:e.clientY,left:r.left,top:r.top};$('inset-handle').setPointerCapture(e.pointerId);};
+$('inset-handle').onpointerdown=e=>{if(mode==='hud')return;const r=insetRect();insetPointer=e.pointerId;dragging={x:e.clientX,y:e.clientY,left:r.left,top:r.top};$('inset-handle').setPointerCapture(e.pointerId);};
 $('inset-handle').onpointermove=e=>{if(dragging)setInsetGeometry(dragging.left+e.clientX-dragging.x,dragging.top+e.clientY-dragging.y);};
-$('inset-handle').onpointerup=$('inset-handle').onpointercancel=()=>dragging=null;
+$('inset-handle').onpointerup=$('inset-handle').onpointercancel=()=>{dragging=null;insetPointer=null;};
 $('inset-handle').onkeydown=e=>{
   const delta={ArrowLeft:[-10,0],ArrowRight:[10,0],ArrowUp:[0,-10],ArrowDown:[0,10]}[e.key];
   if(!delta||mode==='hud'||e.defaultPrevented||e.isComposing||e.keyCode===229||e.ctrlKey||e.metaKey||e.altKey)return;
@@ -435,8 +528,25 @@ $('inset-handle').onkeydown=e=>{
   setInsetGeometry(r.left+(e.shiftKey?0:x),r.top+(e.shiftKey?0:y),r.width+(e.shiftKey?x:0),r.height+(e.shiftKey?y:0));
 };
 const clampInset=()=>{if(mode!=='hud'){const r=insetRect();setInsetGeometry(r.left,r.top);}};
-const resizeObserver = new ResizeObserver(() => { clampInset(); map?.resize(); });
-resizeObserver.observe(shell); resizeObserver.observe(inset); observers.push(resizeObserver);
+let layoutFrame = 0;
+const regularMinHeight = host.style.minHeight;
+function scheduleLayout() {
+  if (destroyed || layoutFrame) return;
+  layoutFrame = requestAnimationFrame(() => {
+    layoutFrame = 0;
+    if (destroyed) return;
+    const fullscreen = isFullscreen();
+    host.style.minHeight = fullscreen ? '0' : regularMinHeight;
+    $('fullscreen').setAttribute('aria-label', fullscreen ? 'Exit fullscreen' : 'Fullscreen');
+    $('fullscreen').title = `${fullscreen ? 'Exit fullscreen' : 'Fullscreen'} (F / Escape)`;
+    setCompact(fullscreen && (shell.clientWidth <= 700 || shell.clientHeight <= 500));
+    shell.style.setProperty('--compact-detail-height', `${Math.max(0, $('views').clientHeight - 36)}px`);
+    clampInset(); map?.resize();
+  });
+}
+const resizeObserver = new ResizeObserver(scheduleLayout);
+resizeObserver.observe(shell); resizeObserver.observe(inset); resizeObserver.observe($('views')); observers.push(resizeObserver);
+document.addEventListener('fullscreenchange', scheduleLayout, {signal:uiController.signal});
 const shortcuts = [
   ['Space','play','click'], ['m','mode','click'], ['s','swap','click'],
   ['c','follow','click'], ['h','heading','click'],
@@ -464,18 +574,32 @@ shell.addEventListener('keydown',e=>{
   const delta=seekDeltaForEvent(e);
   if(delta!==null&&playback&&!destroyed){e.preventDefault();seek(playback.elapsed+delta);return;}
   if(e.key==='Escape'&&!isFullscreen())return;
-  const shortcut=shortcutForEvent(e,shortcuts);
+  if(e.key==='Escape'&&detailState.layout==='compact'&&detailState.detail!==null&&!e.defaultPrevented&&!e.isComposing&&!e.ctrlKey&&!e.metaKey&&!e.altKey){
+    e.preventDefault();
+    const selected=detailState.detail;
+    selectDetail(null);
+    detailTriggers[selected].focus({preventScroll:true});
+    return;
+  }
+  const shortcut=shortcutForEvent(e,shortcuts,detailState.layout==='compact');
   if(!shortcut)return;
   e.preventDefault();
   if(shortcut.activation==='toggle-drop')drop=!drop;
-  else if(shortcut.activation==='focus')shortcut.element.focus();
+  else if(shortcut.activation==='focus'){
+    const owner=detailOwner(shortcut.element);
+    if(detailState.layout==='compact'&&owner){
+      if(shortcut.element===$('quality')&&$('quality-row').hidden)return;
+      selectDetail(owner);
+    }
+    if(visible(shortcut.element))shortcut.element.focus();
+  }
   else if(shortcut.repeat&&e.shiftKey)shortcut.element.dispatchEvent(new MouseEvent('click',{bubbles:true,shiftKey:true}));
   else shortcut.element.click();
 }, {signal:uiController.signal});
 function assertLive() { if (destroyed) throw new Error('Player is destroyed'); }
 const api = {
   get ready() { return initialReady; },
-  get state() { return playback ? {...playback.state, mode, mainView, sample:current ? {...current, position:[...current.position]} : null, mapReady:ready, advancedSync} : null; },
+  get state() { return playback ? {...playback.state, mode, mainView, sample:current ? {...current, position:[...current.position]} : null, mapReady:ready, advancedSync:advancedSync()} : null; },
   load,
   selectQuality(id) { return playback?.selectQuality(id) ?? Promise.resolve({status: 'rejected', reason: 'no-flight'}); },
   updateQualities(loadId, catalogue) { return playback?.updateCatalogue(loadId, catalogue) ?? {status: 'rejected', reason: 'stale-load', message: 'The flight load is no longer current.'}; },
@@ -509,7 +633,7 @@ const api = {
     if (destroyed) return;
     destroyed = true; ++generation;
     events.dispatchEvent(new CustomEvent('destroy', {detail:{}}));
-    controller?.abort(); cancelAnimationFrame(raf);
+    controller?.abort(); cancelAnimationFrame(raf); cancelAnimationFrame(layoutFrame);
     for (const observer of observers) observer.disconnect();
     if (isFullscreen()) document.exitFullscreen().catch(() => {});
     uiController.abort();

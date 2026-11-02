@@ -46,6 +46,14 @@ Run `npm run test:types` to build, pack and install the package in a temporary c
 
 Click or Tab into one player to use its shortcuts. Page controls and other instances are unaffected.
 
+### Compact fullscreen
+
+Native fullscreen uses compact controls when the player is at most 700 px wide or 500 px high. Altitude, vario, ground speed, Play, timeline, elapsed time, Profile, Options, Sync, and fullscreen exit stay visible. Profile starts closed. Profile, Options, and Sync share one detail area above the controls. Each detail has a Close button. Short screens scroll the detail content.
+
+Options contains display, playback speed, quality, audio, opacity, and track endpoint controls. Closing a detail preserves settings. A nonzero sync offset stays visible when Sync is closed. `setAdvancedSync(true)` opens Sync. `setAdvancedSync(false)` closes Sync without closing an open Profile or Options detail.
+
+Focus shortcuts open the detail that owns their control. Application Escape closes an open detail before exiting fullscreen. Native browser Escape can exit fullscreen directly. Embedded players and larger fullscreen players use the regular dashboard. If native fullscreen is unavailable, the player keeps its embedded layout.
+
 ### Keyboard shortcuts
 
 | Key | Action |
@@ -330,6 +338,10 @@ A `DeliveryAdapter` supplies `kind`, `adaptive`, `pinned`, `supports(type)` and 
 ### Quality verification
 
 `npm run test:quality` runs the built player in Chromium with generated VP8, H.264, HEVC and audio-only fixtures. It requires `ffmpeg` with libvpx, libx264 and libx265. The script uses temporary resources and offline map styles. It checks all nine quality scenarios, native keyboard input, narrow layout, fullscreen, independent players, cancellation, release and real transport failures. The HEVC expectation follows an independent decode probe in the running browser. Audio-only media must fail on every browser. Its provider fixture checks the adapter protocol with decoded media, not an adaptive engine.
+
+`npm run test:fullscreen` checks native fullscreen at 390×844, 844×390, 667×320, 320×568, and 568×320, plus desktop fullscreen and embedded layouts. It uses the built player and offline fixtures. It checks touch targets, panel scrolling, seeking, settings, sync, focus, node identity, rotation, map bounds, and destruction. Screenshots are saved to the temporary directory printed by the script. `npm run test:browser` includes this check.
+
+Chromium viewport tests do not verify physical safe areas, mobile native selectors, or fullscreen availability on Safari and Android. These need real-device checks.
 
 `npm run test:controls` checks the built player's window controls in both main views, HUD, fullscreen and a 320px-wide mount. It checks audio, quality retry and control positions, and saves synthetic-data screenshots to a temporary directory.
 
