@@ -155,8 +155,14 @@ try {
   await first.locator('#mode').click();
   await first.locator('#fullscreen').click();
   await page.waitForFunction(() => !!document.fullscreenElement);
-  await geometry();
+  await expect(first.locator('#compact-controls')).toBeVisible();
+  await expect(first.locator('#profile')).toBeHidden();
+  await expect(first.locator('#volume')).toBeHidden();
+  await first.locator('#compact-options-toggle').click();
+  await expect(first.locator('#volume')).toBeVisible();
+  await expect(first.locator('#quality')).toBeVisible();
   await screenshot('narrow-fullscreen');
+  await first.locator('#compact-close').click();
   await first.locator('#fullscreen').click();
   await page.waitForFunction(() => !document.fullscreenElement);
   await page.evaluate(async () => {
